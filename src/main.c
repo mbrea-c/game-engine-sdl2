@@ -35,16 +35,6 @@ int main(int argc, char **argv)
 	GO_ShipCloseWithWalls(ship, WALL_LIGHT);
 	CO_GenerateShipCollider(ship);
 	
-	// DELETE
-	int x,y;
-	for (y = 0; y < 15; y++) {
-		for (x = 0; x < 10; x++) {
-			printf("%d ", GO_ShipGetBlock(ship, x, y)->type);
-		}
-		printf("\n");
-	}
-	// DELETE END
-	
 	ship->physics.angularVel = 7.8;
 	ship->physics.linearVel = (Real2) {0.1, -0.2};
 	printf("MASS m%f\n", ship->physics.mass);

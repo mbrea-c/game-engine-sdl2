@@ -52,7 +52,6 @@ typedef struct Graphics Graphics;
 typedef struct Block Block;
 typedef struct Physics Physics;
 typedef struct Collider Collider;
-typedef struct Polygon Polygon;
 typedef struct Material Material;
 typedef struct WallType WallType;
 

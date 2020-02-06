@@ -9,7 +9,7 @@ TESTS = test/testlist.c
 CC = gcc
 
 #additional compilation options
-COMPILER_FLAGS = -w
+COMPILER_FLAGS = -std=c99 -pedantic -Wall -Wextra
 
 #libraries we're linking against
 LINKER_FLAGS = -lSDL2 -lSDL2_image -lm

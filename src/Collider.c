@@ -19,11 +19,10 @@ void _CO_UpdateXY(int *x, int *y, int dir);
 
 void CO_GenerateShipCollider(Object *ship)
 {
-	int width, height, i, j, x, y, prev, startX, startY, done;
+	int width, height, i, j, x, y, prev, startX, startY;
 	Polygon *polygon;
 
 	startX = startY = prev = -1;
-	done = 0;
 	width = GO_ShipGetWidth(ship);
 	height = GO_ShipGetHeight(ship);
 	polygon = PG_CreateEmpty();
@@ -90,7 +89,7 @@ void CO_GenerateShipCollider(Object *ship)
 // Is vertex over block
 int _CO_IsOverBlock(Object *ship, int x, int y)
 {       
-	int overBlock, width, height, i;
+	int overBlock, width, height;
 
 	width = GO_ShipGetWidth(ship);
 	height = GO_ShipGetHeight(ship);

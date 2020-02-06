@@ -4,6 +4,11 @@
 #include <math.h>
 #include <stdio.h>
 
+/* In case M_PI is not defined */
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif /*M_PI*/
+
 typedef struct Real2 Real2;
 
 struct Real2 {

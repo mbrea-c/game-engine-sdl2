@@ -138,11 +138,6 @@ Real2 GO_GetParentRelativePos(Object *object, Real2 pos)
 	return R2_Add(object->transform.pos, rotatedPos);
 }
 
-void GO_SetRootPosition(Object *object, Real2 pos)
-{
-	//TODO: Implement this	
-}
-
 void GO_LogObjectTree(Object *root, FILE *outfile)
 {
 	_GO_LogObjectTreeRec(root, outfile, 0);
@@ -177,7 +172,7 @@ void _GO_LogObjectTreeRec(Object *root, FILE *outfile, int depth)
 Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *parent, int width, int height)
 {
 	printf("DEBUG: Creating ship %s\n", name);
-	int i, j, k;
+	int i, j;
 	Ship *shipObj = malloc(sizeof(Ship));
 	shipObj->width = width;
 	shipObj->height = height;
@@ -299,7 +294,7 @@ Object *GO_CreateCamera(double x, double y, char *name, Object *parent, double w
 	Camera *cameraObj = malloc(sizeof(Camera));
 	cameraObj->width = width;
 	
-	Object *newCamera = GO_CreateObject(OBJ_CAMERA, "testcamera", x, y, 0, cameraObj, parent);
+	Object *newCamera = GO_CreateObject(OBJ_CAMERA, name, x, y, 0, cameraObj, parent);
 	GO_SetCamera(newCamera);
 	return newCamera;
 }

@@ -22,7 +22,6 @@ void GO_AddChild(Object *parent, Object *child);
 Transform GO_GetRootTransform(Object *object);
 Transform GO_GetRelativeTransform_T(Transform *reference, Transform *target);
 Real2 GO_GetParentRelativePos(Object *object, Real2 pos);
-void GO_SetRootPosition(Object *object, Real2 pos);
 Real2 GO_GetRootPositionFrom(Object *reference, Real2 localPos);
 Real2 GO_GetLocalPositionTo(Object *target, Real2 globalPos);
 

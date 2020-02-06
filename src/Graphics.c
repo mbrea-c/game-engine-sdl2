@@ -132,7 +132,6 @@ void _GR_RenderTrail(Object *trail, Object *camera)
 void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 {
 	double xPixelsPerUnit, yPixelsPerUnit;
-	int count, i, length, oldest;
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
 
@@ -173,7 +172,7 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	//TODO: Figure out how to optimize by minimizing floating point operations
 	//TODO: Block rendering seems somewhat unstable. Try using rotated basis instead
 	double xPixelsPerUnit, yPixelsPerUnit;
-	int x, y, k, shipWidth, shipHeight;
+	int x, y, shipWidth, shipHeight;
 	Block *block;
 	SDL_Rect currBlock;
 	SDL_Point centerOfRotation;

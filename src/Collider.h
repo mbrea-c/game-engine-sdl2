@@ -6,10 +6,8 @@
 #include "GameObject.h"
 
 // Real time collision step methods
-void CO_CheckCollision(Object *obj0, Object *obj1)
-{
 //TODO: need to make collision work. Do we need a separate collider type for bullits?
-}
+void CO_CheckCollision(Object *obj0, Object *obj1);
 
 // Ship methods
 void CO_GenerateShipCollider(Object *ship);
