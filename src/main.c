@@ -15,7 +15,8 @@
 
 int main(int argc, char **argv)
 {
-	int quit;
+	int quit, willUpdate;
+	double timeCoefficient;
 	Uint32 startTime, frameTime;
 	SDL_Event event;
 	GR_Init();
@@ -23,6 +24,7 @@ int main(int argc, char **argv)
 	Object *camera = GO_CreateCamera(0, 0, "camerita", root, 30);
 	Object *ship = GO_CreateEmptyShip("shipi", 7, 7, 0, root, 10, 15); 
 	Object *trail = GO_CreateTrail("shipi trail", root, 100);
+	Object *bullet = GO_CreateProjectile("bullit", 0, 20, root, PROJ_BULLET, 0.3);
 	GO_ShipSetBlock(ship, 0,0, GO_CreateUnwalledBlock(BLOCK_TEST));
 	GO_ShipSetBlock(ship, 0,1, GO_CreateUnwalledBlock(BLOCK_TEST));
 	GO_ShipSetBlock(ship, 1,0, GO_CreateUnwalledBlock(BLOCK_TEST));
@@ -37,12 +39,15 @@ int main(int argc, char **argv)
 	
 	ship->physics.angularVel = 7.8;
 	ship->physics.linearVel = (Real2) {0.1, -0.2};
+	PH_SetLinearVelocity(bullet, R2_ScalarMult((Real2) {3, -5}, 10));
 	printf("MASS m%f\n", ship->physics.mass);
 	printf("COM  x%fy%f\n", ship->physics.centerOfMass.x, ship->physics.centerOfMass.y);
 	GO_LogObjectTree(root, stderr);
 
 	quit = 0;
 	startTime = 0;
+	timeCoefficient = 1;
+	willUpdate = 0;
 	// Main loop
 	while (!quit) {
 		startTime = SDL_GetTicks();
@@ -54,11 +59,21 @@ int main(int argc, char **argv)
 					case SDLK_q:
 						quit = 1;
 						break;
+					case SDLK_SPACE:
+						willUpdate = 1;
+						break;
 				}
 			}
 		}
-		GO_PushToTrail(trail, GO_GetRootPositionFrom(ship, ship->physics.centerOfMass));
-		PH_UpdateObjectTree(root, (double) TICKS_PER_FRAME / 1000.0);
+		if (willUpdate) {
+			GO_PushToTrail(trail, GO_GetRootPositionFrom(ship, ship->physics.centerOfMass));
+			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
+			if (CO_MayCollide(ship, bullet)) {
+				printf("BOOM BAM CRASH BULLIT HIT!!!1!\n");
+				GO_ShipAddHole(ship, GO_GetLocalPositionTo(ship, GO_GetRootPositionFrom(bullet, CO_PolygonGetFirstVertex(bullet))));
+			}
+			willUpdate = 0;
+		}
 		GR_Render(root);
 		frameTime = SDL_GetTicks() - startTime;
 		/*printf("FRAME TICKS: %d\n", frameTime);*/

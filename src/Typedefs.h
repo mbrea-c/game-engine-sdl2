@@ -23,6 +23,11 @@ enum WallTypes {
 	WALL_COUNT
 };
 
+enum ProjectileTypes {
+	PROJ_BULLET,
+	PROJ_COUNT
+};
+
 enum WallPos {
 	LEFT_WALL,
 	TOP_WALL,
@@ -35,6 +40,7 @@ enum ObjectTypes {
 	OBJ_SHIP, 
 	OBJ_CAMERA,
 	OBJ_TRAIL,
+	OBJ_PROJECTILE
 };
 
 enum ColliderTypes {
@@ -47,13 +53,20 @@ typedef struct Camera Camera;
 typedef struct Transform Transform;
 typedef struct Object Object;
 typedef struct Ship Ship;
+typedef struct Projectile Projectile;
 typedef struct Trail Trail;
-typedef struct Graphics Graphics;
 typedef struct Block Block;
 typedef struct Physics Physics;
 typedef struct Collider Collider;
 typedef struct Material Material;
 typedef struct WallType WallType;
+typedef struct ProjectileType ProjectileType;
+typedef struct ShipHole ShipHole;
+
+struct Transform {
+	Real2 pos;
+	double rot;
+};
 
 struct Physics {
 	int enabled;
@@ -62,17 +75,13 @@ struct Physics {
 	Real2 centerOfMass;
 	double mass;
 	double momentOfInertia;
+	Transform prevTransform;
 };
 
 struct Collider {
 	int enabled;
 	int type;
 	void *collider;
-};
-
-struct Transform {
-	Real2 pos;
-	double rot;
 };
 
 struct Camera {
@@ -91,21 +100,33 @@ struct Object {
 	List *children;
 };
 
-struct Graphics {
-	LTexture *texture;
-};
-
 struct Block {
 	int type;
 	Material *material;
 	WallType *walls[4];
 };
 
+struct ShipHole {
+	Real2 pos;
+	int xBlock1, yBlock1, xBlock2, yBlock2;
+};
+
 struct Ship {
 	int width;
 	int height;
 	Block *blocks;
-	Graphics graphics;
+	List *holes;
+};
+
+struct Projectile {
+	ProjectileType *projectileType;
+	double size;
+};
+
+struct ProjectileType {
+	int type;
+	LTexture *texture;
+	double mass;
 };
 
 struct Trail {

@@ -23,5 +23,8 @@ void PG_AppendVertex(Polygon *polygon, Real2 vertex)
 	}
 }
 
-void PG_RemoveVertex(Polygon *polygon, int i);
+Real2 PG_GetFirstVertex(Polygon *polygon)
+{
+	return *((Real2 *) List_Head(polygon->vertices));
+}
 

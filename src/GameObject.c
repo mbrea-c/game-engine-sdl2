@@ -177,7 +177,8 @@ Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *p
 	shipObj->width = width;
 	shipObj->height = height;
 	shipObj->blocks = malloc(width * height * sizeof(Block));
-	Object *newShip = GO_CreateObject(OBJ_SHIP, "testship", x, y, rot, shipObj, parent);
+	shipObj->holes = NULL;
+	Object *newShip = GO_CreateObject(OBJ_SHIP, name, x, y, rot, shipObj, parent);
 
 	for (j = 0; j < height; j++) {
 		for (i = 0; i < width; i++) {
@@ -271,6 +272,60 @@ void GO_ShipCloseWithWalls(Object *ship, int wallType)
 			}
 		}
 	}
+}
+
+void GO_ShipAddHole(Object *ship, Real2 damagePos)
+{
+	ShipHole *hole;
+	Ship *shipObj;
+	int hx, hy;
+
+	shipObj = (Ship *) ship->obj;
+	hx = (int) damagePos.x;
+	hy = (int) damagePos.y;
+
+	hole = malloc(sizeof(ShipHole));
+	hole->pos = damagePos;
+	// Find two closest block to damage position
+	// block it lies on
+	hole->xBlock1 = hx;
+	hole->yBlock1 = hy;
+	// second closest block
+	hole->xBlock2 = damagePos.x - hx < hx + 1 - damagePos.x ? hx - 1 : hx + 1;
+	hole->yBlock2 = damagePos.y - hy < hy + 1 - damagePos.y ? hy - 1 : hy + 1;
+
+	// Add hole info to ship hole list
+	if (shipObj->holes == NULL) {
+		shipObj->holes = List_Create(hole);
+	} else {
+		List_Append(shipObj->holes, hole);
+	}
+}
+
+// Projectile procedures
+
+Object *GO_CreateProjectile(char *name, double x, double y, Object *parent, int projectileType, double size)
+{
+	Object *projObj;
+	Projectile *proj = malloc(sizeof(Projectile));
+
+	proj->projectileType = gProjectileTypes[projectileType];
+	proj->size = size;
+	projObj = GO_CreateObject(OBJ_PROJECTILE, name, x, y, 0, proj, parent);
+
+	// Initialize physics
+	PH_SetPhysicsEnabled(projObj, 1);
+	PH_SetLinearVelocity(projObj, (Real2) {0, 0});
+	PH_SetAngularVelocity(projObj, 0);
+	PH_SetCenterOfMass(projObj, (Real2) {size/2, size/2});
+	PH_SetMass(projObj, gProjectileTypes[projectileType]->mass);
+
+	// Initialize collider
+	projObj->collider.enabled = 1;
+	projObj->collider.type = COLL_POLYGON;
+	CO_GenerateProjectileCollider(projObj);
+
+	return projObj;
 }
 
 // Block procedures

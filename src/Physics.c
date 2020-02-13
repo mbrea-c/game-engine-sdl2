@@ -1,6 +1,86 @@
 #include "Physics.h"
 
+// Local procedures
+void _PH_CheckPhysicsEnabled(Object *obj)
+{
+	if (!PH_IsPhysicsEnabled(obj)) {
+		fprintf(stderr, "Error: Physics is not enabled for object %s\n", obj->name);
+		exit(1);
+	}
+}
+
+// Getters
+//TODO: Potentially remove physics enabled check, kept there for debug
+
+int PH_IsPhysicsEnabled(Object *obj)
+{
+	 return obj->physics.enabled;
+}
+
+Real2 PH_GetLinearVelocity(Object *obj)
+{
+	_PH_CheckPhysicsEnabled(obj);
+	return obj->physics.linearVel;
+}
+
+Real2 PH_GetCenterOfMass(Object *obj)
+{
+	_PH_CheckPhysicsEnabled(obj);
+	return obj->physics.centerOfMass;
+}
+
+double PH_GetAngualrVelocity(Object *obj)
+{
+	_PH_CheckPhysicsEnabled(obj);
+	return obj->physics.angularVel;
+}
+
+double PH_GetMass(Object *obj)
+{
+	_PH_CheckPhysicsEnabled(obj);
+	return obj->physics.mass;
+}
+
+double PH_GetMomentOfInertia(Object *obj)
+{
+	_PH_CheckPhysicsEnabled(obj);
+	return obj->physics.momentOfInertia;
+}
+
+// Setters
+
+void PH_SetPhysicsEnabled(Object *obj, int enabled)
+{
+	obj->physics.enabled = enabled;
+}
+
+void PH_SetLinearVelocity(Object *obj, Real2 linearVel)
+{
+	obj->physics.linearVel = linearVel;
+}
+
+void PH_SetAngularVelocity(Object *obj, double angularVel)
+{
+	obj->physics.angularVel = angularVel;
+}
+
+void PH_SetCenterOfMass(Object *obj, Real2 centerOfMass)
+{
+	obj->physics.centerOfMass = centerOfMass;
+}
+
+void PH_SetMass(Object *obj, double mass)
+{
+	obj->physics.mass = mass;
+}
+
+void PH_SetMomentOfInertia(Object *obj, double momentOfInertia)
+{
+	obj->physics.momentOfInertia = momentOfInertia;
+}
+
 void PH_UpdateShipMass(Object *ship)
+
 {
 	int x, y;
 	double mass;
@@ -57,15 +137,6 @@ void PH_UpdateShipPhysicsData(Object *ship)
 	PH_UpdateShipMOI(ship);
 }
 
-void PH_SetLinearVelocity(Object *obj, Real2 newVel)
-{
-	obj->physics.linearVel = newVel;
-}
-
-void PH_SetAngularVelocity(Object *obj, double newVel)
-{
-	obj->physics.angularVel = newVel;
-}
 
 void PH_UpdateRotation(Object *obj, double deltaT)
 {
@@ -92,6 +163,7 @@ void PH_UpdatePosition(Object *obj, double deltaT)
 
 void PH_UpdatePhysicsMotion(Object *obj, double deltaT)
 {
+	obj->physics.prevTransform = obj->transform;
 	PH_UpdateRotation(obj, deltaT);
 	PH_UpdatePosition(obj, deltaT);
 }

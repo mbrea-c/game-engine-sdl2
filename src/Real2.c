@@ -37,6 +37,30 @@ double R2_DistSq(Real2 u, Real2 v)
 	return R2_Dot(sub, sub);
 }
 
+double R2_AngleDeg(Real2 u)
+{
+	double mag, angle;
+
+	mag = R2_Mag(u);
+	if (mag != 0) {
+		angle = acos(R2_Dot(u, (Real2) {1, 0}) / R2_Mag(u));
+		angle = angle * 180 / M_PI;
+	} else {
+		angle = 0;
+	}
+	return angle;
+}
+
+double R2_ProjectOn(Real2 u, Real2 projectionTarget)
+{
+	return R2_ProjectOnUnit(u, projectionTarget) / R2_Mag(projectionTarget);
+}
+
+double R2_ProjectOnUnit(Real2 u, Real2 unitProjectionTarget)
+{
+	return R2_Dot(u, unitProjectionTarget);
+}
+
 Real2 R2_Norm(Real2 u)
 {
 	double mag = R2_Mag(u);

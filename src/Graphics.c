@@ -9,6 +9,7 @@ double _GR_GetCameraWidth(Object *camera);
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform);
 void _GR_RenderTrail(Object *trail, Object *camera);
 void _GR_RenderPolygonCollider(Object *obj, Object *camera);
+void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform);
 void _GR_RenderRec(Object *root);
 
 void GR_Init(void)
@@ -87,6 +88,9 @@ void _GR_RenderRec(Object *root)
 			case OBJ_TRAIL:
 				_GR_RenderTrail(root, camera);
 				break;
+			case OBJ_PROJECTILE:
+				_GR_RenderProjectile(root, camera, relativeTransform);
+				break;
 		}
 	}
 
@@ -127,6 +131,29 @@ void _GR_RenderTrail(Object *trail, Object *camera)
 				);
 		/*printf("DEBUG: Rendering trail %s\n", trail->name);*/
 	}
+}
+
+void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform)
+{
+	double xPixelsPerUnit, yPixelsPerUnit, size;
+	SDL_Point centerOfRotation;
+	SDL_Rect currBlock;
+	Projectile *proj;
+	
+	proj = (Projectile *)obj->obj;
+	size = proj->size;
+	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
+	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
+	centerOfRotation = (SDL_Point) { xPixelsPerUnit * size/2, yPixelsPerUnit * size/2 };
+	currBlock = (SDL_Rect) {
+		(int) (relativeTransform.pos.x * xPixelsPerUnit),
+		(int) (relativeTransform.pos.y * yPixelsPerUnit),
+		(int) ceil(xPixelsPerUnit * proj->size),
+		(int) ceil(yPixelsPerUnit * proj->size),
+	};
+
+	LT_RenderRect(proj->projectileType->texture, &currBlock, NULL, -R2_AngleDeg(obj->physics.linearVel), &centerOfRotation, SDL_FLIP_NONE);
+	_GR_RenderPolygonCollider(obj, camera);
 }
 
 void _GR_RenderPolygonCollider(Object *obj, Object *camera)
@@ -174,11 +201,14 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	double xPixelsPerUnit, yPixelsPerUnit;
 	int x, y, shipWidth, shipHeight;
 	Block *block;
+	List *holes;
+	ShipHole *hole;
 	SDL_Rect currBlock;
 	SDL_Point centerOfRotation;
 	Real2 rotatedBlockPos;
 	Real2 rotatedBasisX, rotatedBasisY;
 	
+	holes = ((Ship *) ship->obj)->holes;
 	centerOfRotation = (SDL_Point) { 0, 0 };
 	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
 	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
@@ -230,6 +260,20 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 					break;
 			}
 		}
+	}
+
+	// Render holes (debug for now)
+	while (holes != NULL) {
+		hole = List_Head(holes);
+		currBlock = (SDL_Rect) {
+			(int) ((relativeTransform.pos.x + R2_RotateDeg(hole->pos, relativeTransform.rot).x) * xPixelsPerUnit) -4,
+			(int) ((relativeTransform.pos.y + R2_RotateDeg(hole->pos, relativeTransform.rot).y) * yPixelsPerUnit) -4,
+			8,
+			8,
+		};
+		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+		SDL_RenderFillRect(gRenderer, &currBlock);
+		holes = List_Tail(holes);
 	}
 
 	//TODO: DEBUG UGLY STUFF. DELETE OR FIX vvvvvvvvvv

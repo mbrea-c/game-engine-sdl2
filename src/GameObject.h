@@ -33,6 +33,10 @@ int GO_ShipGetWidth(Object *ship);
 void GO_ShipSetBlock(Object *ship, int x, int y, Block block);
 void GO_ShipSetBlockWall(Object *ship, int x, int y, int wall, int wallType);
 void GO_ShipCloseWithWalls(Object *ship, int wallType);
+void GO_ShipAddHole(Object *ship, Real2 damagePos);
+
+// Projectile procedures
+Object *GO_CreateProjectile(char *name, double x, double y, Object *parent, int projectileType, double size);
 
 // Block procedures
 Block GO_CreateUnwalledBlock(int type);

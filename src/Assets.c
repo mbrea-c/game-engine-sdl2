@@ -26,4 +26,10 @@ void AS_LoadAll(SDL_Renderer *renderer)
 		LT_LoadFromFile("assets/EMPTY00.png", renderer),
 		0,
 	};
+	gProjectileTypes[PROJ_BULLET] = malloc(sizeof(ProjectileType));
+	*(gProjectileTypes[PROJ_BULLET]) = (ProjectileType) {
+		PROJ_BULLET,
+		LT_LoadFromFile("assets/BULLET.png", renderer),
+		50,
+	};
 }

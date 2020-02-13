@@ -7,6 +7,7 @@
 
 Material *gMaterials[BLOCK_COUNT];
 WallType *gWallTypes[WALL_COUNT];
+ProjectileType *gProjectileTypes[PROJ_COUNT];
 
 void AS_LoadAll(SDL_Renderer *renderer);
 
