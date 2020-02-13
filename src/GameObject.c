@@ -195,7 +195,7 @@ Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *p
 	// Initialize collider
 	newShip->collider.enabled = 1;
 	newShip->collider.type = COLL_POLYGON;
-	CO_GenerateShipCollider(newShip);
+	CD_GenerateShipCollider(newShip);
 
 	printf("DEBUG: Created ship %s\n", name);
 	return newShip;
@@ -227,7 +227,7 @@ void GO_ShipSetBlock(Object *ship, int x, int y, Block block)
 {
 	_GO_ShipInitBlock(ship, x, y, block);
 	PH_UpdateShipPhysicsData(ship);
-	CO_GenerateShipCollider(ship);
+	CD_GenerateShipCollider(ship);
 }
 
 int GO_ShipGetHeight(Object *ship)
@@ -323,7 +323,7 @@ Object *GO_CreateProjectile(char *name, double x, double y, Object *parent, int 
 	// Initialize collider
 	projObj->collider.enabled = 1;
 	projObj->collider.type = COLL_POLYGON;
-	CO_GenerateProjectileCollider(projObj);
+	CD_GenerateProjectileCollider(projObj);
 
 	return projObj;
 }

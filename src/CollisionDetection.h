@@ -8,16 +8,16 @@
 
 // Real time collision step methods
 //TODO: need to make collision work. Do we need a separate collider type for bullits?
-void CO_CheckCollision(Object *obj0, Object *obj1);
-Interval CO_ProjectOnAxis(Object *obj, Real2 axis);
-int CO_MayCollide(Object *obj1, Object *obj2);
-Real2 CO_PolygonGetFirstVertex(Object *obj1);
+void CD_CheckCollision(Object *obj0, Object *obj1);
+Interval CD_ProjectOnAxis(Object *obj, Real2 axis);
+int CD_MayCollide(Object *obj1, Object *obj2);
+Real2 CD_PolygonGetFirstVertex(Object *obj1);
 
 // Ship methods
-void CO_GenerateShipCollider(Object *ship);
-void CO_ShipHandleCollision(Object *ship, Object *other);
+void CD_GenerateShipCollider(Object *ship);
+void CD_ShipHandleCollision(Object *ship, Object *other);
 
 // Projectile methods
-void CO_GenerateProjectileCollider(Object *projectile);
+void CD_GenerateProjectileCollider(Object *projectile);
 
 #endif //COLLIDER_H

@@ -9,7 +9,7 @@
 #include "List.h"
 #include "Assets.h"
 #include "Physics.h"
-#include "Collider.h"
+#include "CollisionDetection.h"
 
 
 // General object methods

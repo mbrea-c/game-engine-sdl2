@@ -1,4 +1,4 @@
-#include "Collider.h"
+#include "CollisionDetection.h"
 
 
 // Directions
@@ -20,11 +20,12 @@ struct Intersection {
 	Real2 normal;
 };
 
-int _CO_IsOverBlock(Object *ship, int x, int y);
-int _CO_IsOverBlockDir(Object *ship, int x, int y, int dir);
-void _CO_UpdateXY(int *x, int *y, int dir);
+int _CD_IsOverBlock(Object *ship, int x, int y);
+int _CD_IsOverBlockDir(Object *ship, int x, int y, int dir);
+void _CD_UpdateXY(int *x, int *y, int dir);
+Intersection _CD_FindProjectileShipIntersection(Object *ship, Object *bullet);
 
-void CO_GenerateShipCollider(Object *ship)
+void CD_GenerateShipCollider(Object *ship)
 {
 	int width, height, i, j, x, y, prev, startX, startY;
 	Polygon *polygon;
@@ -38,7 +39,7 @@ void CO_GenerateShipCollider(Object *ship)
 	// Find first vertex
 	for (y = 0; y <= height; y++) {
 		for (x = 0; x <= width; x++) {
-			if (_CO_IsOverBlock(ship, x, y)) {
+			if (_CD_IsOverBlock(ship, x, y)) {
 				startX = x;
 				startY = y;
 				break;
@@ -61,14 +62,14 @@ void CO_GenerateShipCollider(Object *ship)
 	// because procedure is different, we don't know which vertex we are
 	// coming from
 	for (i = 0; i < DIR_COUNT; i++) {
-		if (_CO_IsOverBlockDir(ship, x, y, i)) break;
+		if (_CD_IsOverBlockDir(ship, x, y, i)) break;
 	}
 
 	for (j = 0; j < DIR_COUNT; i = (i - 1) % DIR_COUNT, j++) {
-		if (!_CO_IsOverBlockDir(ship, x, y, i)) break;
+		if (!_CD_IsOverBlockDir(ship, x, y, i)) break;
 	}
 
-	_CO_UpdateXY(&x, &y, (i+1) % DIR_COUNT);
+	_CD_UpdateXY(&x, &y, (i+1) % DIR_COUNT);
 	prev = (i+3) % DIR_COUNT;
 
 	// Find rest of vertices
@@ -78,7 +79,7 @@ void CO_GenerateShipCollider(Object *ship)
 		}
 
 		for (i = (prev + 1) % DIR_COUNT, j = 0; j < DIR_COUNT; i = (i + 1) % DIR_COUNT, j++) {
-			if (_CO_IsOverBlockDir(ship, x, y, i)) break;
+			if (_CD_IsOverBlockDir(ship, x, y, i)) break;
 		}
 
 		// Only add a vertex if there is a change of direction,
@@ -88,12 +89,12 @@ void CO_GenerateShipCollider(Object *ship)
 			PG_AppendVertex(polygon, (Real2) {x, y});
 			prev = (i+2) % DIR_COUNT;
 		}
-		_CO_UpdateXY(&x, &y, i);
+		_CD_UpdateXY(&x, &y, i);
 	}
 
 }
 
-void CO_ShipHandleCollision(Object *ship, Object *other)
+void CD_ShipHandleCollision(Object *ship, Object *other)
 {
 	switch (other->type) {
 		case OBJ_PROJECTILE:
@@ -103,7 +104,7 @@ void CO_ShipHandleCollision(Object *ship, Object *other)
 }
 
 //TODO: This procedure contains a silly amount of placeholder hacks
-void CO_CheckCollision(Object *obj0, Object *obj1)
+void CD_CheckCollision(Object *obj0, Object *obj1)
 {
 	int type0, type1;
 
@@ -112,17 +113,17 @@ void CO_CheckCollision(Object *obj0, Object *obj1)
 	
 	// No collision in current frame
 	//TODO: Continuous collision should replace this shitty test
-	if (!CO_MayCollide(obj0, obj1)) {
+	if (!CD_MayCollide(obj0, obj1)) {
 		return;
 	}
 
-	if ( type0 == OBJ_PROJECTILE && type1 == OBJ_SHIP
-	  || type0 == OBJ_SHIP && type1 == OBJ_PROJECTILE) {
+	if ( (type0 == OBJ_PROJECTILE && type1 == OBJ_SHIP)
+	  || (type0 == OBJ_SHIP && type1 == OBJ_PROJECTILE)) {
 		//TODO: CCD HERE
 	}
 }
 
-void CO_GenerateProjectileCollider(Object *projectile)
+void CD_GenerateProjectileCollider(Object *projectile)
 {
 	double size;	
 	Polygon *polygon;
@@ -133,7 +134,7 @@ void CO_GenerateProjectileCollider(Object *projectile)
 	PG_AppendVertex(polygon, (Real2) {size/2, size/2});
 }
 
-Interval CO_ProjectOnAxis(Object *obj, Real2 axis)
+Interval CD_ProjectOnAxis(Object *obj, Real2 axis)
 {
 	Interval interval;
 	List *vertex; 
@@ -165,7 +166,7 @@ Interval CO_ProjectOnAxis(Object *obj, Real2 axis)
 	return interval;
 }
 
-int CO_MayCollide(Object *obj1, Object *obj2)
+int CD_MayCollide(Object *obj1, Object *obj2)
 {
 	int mayCollide;
 	Interval intervalObj1, intervalObj2;
@@ -175,7 +176,7 @@ int CO_MayCollide(Object *obj1, Object *obj2)
 	mayCollide = 1;
 	vertexList = ((Polygon *) obj1->collider.collider)->vertices;
 	if (vertexList == NULL) {
-		fprintf(stderr, "CO_MayCollide: obj1's collider is NULL\n");
+		fprintf(stderr, "CD_MayCollide: obj1's collider is NULL\n");
 		exit(1);
 	}
 	nextVertex = GO_GetRootPositionFrom(obj1, *((Real2 *)List_Head(vertexList)));
@@ -184,14 +185,14 @@ int CO_MayCollide(Object *obj1, Object *obj2)
 		vertexList = List_Tail(vertexList);
 		nextVertex = GO_GetRootPositionFrom(obj1, *((Real2 *)List_Head(vertexList)));
 		axis = R2_Norm(R2_Normal(R2_Sub(nextVertex, currVertex)));
-		intervalObj1 = CO_ProjectOnAxis(obj1, axis);
-		intervalObj2 = CO_ProjectOnAxis(obj2, axis);
+		intervalObj1 = CD_ProjectOnAxis(obj1, axis);
+		intervalObj2 = CD_ProjectOnAxis(obj2, axis);
 		mayCollide = mayCollide && IN_IsIntersecting(&intervalObj1, &intervalObj2);
 	}
 	return mayCollide;
 }
 
-Real2 CO_PolygonGetFirstVertex(Object *obj)
+Real2 CD_PolygonGetFirstVertex(Object *obj)
 {
 	if (obj->collider.type != COLL_POLYGON) {
 		fprintf(stderr, "Error: %s does not have a polygon collider\n", obj->name);
@@ -203,7 +204,7 @@ Real2 CO_PolygonGetFirstVertex(Object *obj)
 // ---------------------
 // Local procedures
 // Is vertex over block
-int _CO_IsOverBlock(Object *ship, int x, int y)
+int _CD_IsOverBlock(Object *ship, int x, int y)
 {       
 	int overBlock, width, height;
 
@@ -231,7 +232,7 @@ int _CO_IsOverBlock(Object *ship, int x, int y)
 }
 
 // Is vertex at given direction over block
-int _CO_IsOverBlockDir(Object *ship, int x, int y, int dir)
+int _CD_IsOverBlockDir(Object *ship, int x, int y, int dir)
 {
 	switch (dir) {
 		case UP:
@@ -247,10 +248,10 @@ int _CO_IsOverBlockDir(Object *ship, int x, int y, int dir)
 			x--;
 			break;
 	}
-	return _CO_IsOverBlock(ship, x, y);
+	return _CD_IsOverBlock(ship, x, y);
 }
 
-void _CO_UpdateXY(int *x, int *y, int dir)
+void _CD_UpdateXY(int *x, int *y, int dir)
 {
 	switch (dir) {
 		case UP:
@@ -266,4 +267,9 @@ void _CO_UpdateXY(int *x, int *y, int dir)
 			(*x)--;
 			break;
 	}
+}
+
+Intersection _CD_FindProjectileShipIntersection(Object *ship, Object *bullet)
+{
+	
 }

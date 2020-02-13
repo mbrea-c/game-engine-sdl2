@@ -8,7 +8,7 @@
 #include "GameObject.h"
 #include "Assets.h"
 #include "Physics.h"
-#include "Collider.h"
+#include "CollisionDetection.h"
 
 #define FPS_CAP 60
 #define TICKS_PER_FRAME 1000 / FPS_CAP
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 	GO_ShipSetBlock(ship, 4,0, GO_CreateUnwalledBlock(BLOCK_TEST));
 	PH_UpdateShipPhysicsData(ship);
 	GO_ShipCloseWithWalls(ship, WALL_LIGHT);
-	CO_GenerateShipCollider(ship);
+	CD_GenerateShipCollider(ship);
 	
 	ship->physics.angularVel = 7.8;
 	ship->physics.linearVel = (Real2) {0.1, -0.2};
@@ -68,9 +68,9 @@ int main(int argc, char **argv)
 		if (willUpdate) {
 			GO_PushToTrail(trail, GO_GetRootPositionFrom(ship, ship->physics.centerOfMass));
 			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
-			if (CO_MayCollide(ship, bullet)) {
+			if (CD_MayCollide(ship, bullet)) {
 				printf("BOOM BAM CRASH BULLIT HIT!!!1!\n");
-				GO_ShipAddHole(ship, GO_GetLocalPositionTo(ship, GO_GetRootPositionFrom(bullet, CO_PolygonGetFirstVertex(bullet))));
+				GO_ShipAddHole(ship, GO_GetLocalPositionTo(ship, GO_GetRootPositionFrom(bullet, CD_PolygonGetFirstVertex(bullet))));
 			}
 			willUpdate = 0;
 		}
