@@ -126,6 +126,84 @@ Real2 GO_GetLocalPositionTo(Object *reference, Real2 globalPos)
 	return localPos;
 }
 
+Real2 GO_PosToParentSpace(Object *obj, Real2 localPos)
+{
+	return R2_Add(obj->transform.pos, R2_RotateDeg(localPos, obj->transform.rot));
+}
+
+Real2 GO_PosToRootSpace(Object *obj, Real2 localPos)
+{
+	while (obj->parent != NULL) {
+		localPos = GO_PosToParentSpace(obj, localPos);
+		obj = obj->parent;
+	}
+
+	return localPos;
+}
+
+Real2 GO_PosToLocalSpace(Object *obj, Real2 rootPos)
+{
+	rootPos = R2_Sub(rootPos, GO_PosToRootSpaceObj(obj));
+	rootPos = R2_RotateDeg(rootPos, -GO_RotToRootSpaceObj(obj));
+	return rootPos;
+}
+
+Real2 GO_PosToRootSpaceObj(Object *obj)
+{
+	return GO_PosToRootSpace(obj, (Real2) {0, 0});
+}
+
+double GO_RotToParentSpace(Object *obj, double localRot)
+{
+	return localRot + obj->transform.rot;
+}
+
+double GO_RotToRootSpace(Object *obj, double localRot)
+{
+	while (obj->parent != NULL) {
+		localRot = GO_RotToParentSpace(obj, localRot);
+		obj = obj->parent;
+	}
+
+	return localRot;
+}
+
+double GO_RotToLocalSpace(Object *obj, double rootRot)
+{
+	return rootRot - GO_RotToRootSpace(obj, obj->transform.rot);
+}
+
+double GO_RotToRootSpaceObj(Object *obj)
+{
+	return GO_RotToRootSpace(obj, 0);
+}
+
+Transform GO_TransformToParentSpace(Object *obj, Transform localTransform)
+{
+	localTransform.pos = GO_PosToParentSpace(obj, localTransform.pos);
+	localTransform.rot = GO_RotToParentSpace(obj, localTransform.rot);
+	return localTransform;
+}
+
+Transform GO_TransformToRootSpace(Object *obj, Transform localTransform)
+{
+	localTransform.pos = GO_PosToRootSpace(obj, localTransform.pos);
+	localTransform.rot = GO_RotToRootSpace(obj, localTransform.rot);
+	return localTransform;
+}
+
+Transform GO_TransformToLocalSpace(Object *obj, Transform rootTransform)
+{
+	rootTransform.pos = GO_PosToLocalSpace(obj, rootTransform.pos);
+	rootTransform.rot = GO_RotToLocalSpace(obj, rootTransform.rot);
+	return rootTransform;
+}
+
+Transform GO_TransformToRootSpaceObj(Object *obj)
+{
+	return GO_TransformToRootSpace(obj, (Transform) {(Real2) {0, 0}, 0});
+}
+
 // Gets position information relative to parent of given object
 Real2 GO_GetParentRelativePos(Object *object, Real2 pos)
 {

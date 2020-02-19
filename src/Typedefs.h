@@ -69,12 +69,22 @@ struct Transform {
 };
 
 struct Physics {
+	// Constants
 	int enabled;
+	double mass;
+	double momentOfInertia;
+	// Force accumulator
+	Real2 forceAccum;
+	// Mutable data
 	Real2 linearVel;
 	double angularVel;
 	Real2 centerOfMass;
-	double mass;
-	double momentOfInertia;
+	// Helper for physics updaters
+	Real2 nextLinearVel;
+	double nextAngularVel;
+	double nextRot;
+	Real2 nextCenterOfMass;
+	// Old transform for collisions
 	Transform prevTransform;
 };
 

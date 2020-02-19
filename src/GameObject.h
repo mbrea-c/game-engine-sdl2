@@ -19,11 +19,22 @@ void GO_LogObjectTree(Object *root, FILE *outfile);
 Object *GO_GetParent(Object *object);
 Object *GO_GetChild(Object *object, char *name);
 void GO_AddChild(Object *parent, Object *child);
-Transform GO_GetRootTransform(Object *object);
-Transform GO_GetRelativeTransform_T(Transform *reference, Transform *target);
-Real2 GO_GetParentRelativePos(Object *object, Real2 pos);
-Real2 GO_GetRootPositionFrom(Object *reference, Real2 localPos);
-Real2 GO_GetLocalPositionTo(Object *target, Real2 globalPos);
+//given obj O and local space pos P, return P in local space of O's parent
+Real2 GO_PosToParentSpace(Object *obj, Real2 localPos);
+//given obj O and local space pos P, return P in root space
+Real2 GO_PosToRootSpace(Object *obj, Real2 localPos);
+//given obj O and root space pos P, return P in local space of O
+Real2 GO_PosToLocalSpace(Object *obj, Real2 rootPos);
+Real2 GO_PosToRootSpaceObj(Object *obj);
+double GO_RotToParentSpace(Object *obj, double localRot);
+double GO_RotToRootSpace(Object *obj, double localRot);
+double GO_RotToLocalSpace(Object *obj, double rootRot);
+double GO_RotToRootSpaceObj(Object *obj);
+Transform GO_TransformToParentSpace(Object *obj, Transform localTransform);
+Transform GO_TransformToRootSpace(Object *obj, Transform localTransform);
+Transform GO_TransformToLocalSpace(Object *obj, Transform rootTransform);
+Transform GO_TransformToRootSpaceObj(Object *obj);
+
 
 // Ship procedures
 Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *parent, int width, int height);

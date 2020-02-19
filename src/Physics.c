@@ -1,6 +1,15 @@
 #include "Physics.h"
 
+#define FIELD_COUNT 6
+
 // Local procedures
+// ODE Solver methods
+int    _PH_GetDim(void *objects);
+void   _PH_SetNextVal(void *objects, int i, double newVal);
+void   _PH_UpdateVals(void *objects);
+double _PH_GetVal(void *objects, int i);
+double _PH_dydt(double t, ODEVector y, int ind);
+Real2 _PH_GetPosFromCOM(Object *object, double rot, Real2 centerOfMass);
 void _PH_CheckPhysicsEnabled(Object *obj)
 {
 	if (!PH_IsPhysicsEnabled(obj)) {
@@ -80,7 +89,6 @@ void PH_SetMomentOfInertia(Object *obj, double momentOfInertia)
 }
 
 void PH_UpdateShipMass(Object *ship)
-
 {
 	int x, y;
 	double mass;
@@ -137,52 +145,179 @@ void PH_UpdateShipPhysicsData(Object *ship)
 	PH_UpdateShipMOI(ship);
 }
 
-
-void PH_UpdateRotation(Object *obj, double deltaT)
-{
-	double deltaAngle;
-	Real2 comOld, comNew;
-
-	deltaAngle = deltaT * obj->physics.angularVel;	
-	comOld = GO_GetParentRelativePos(obj, obj->physics.centerOfMass);
-	obj->transform.rot += deltaAngle;
-	comNew = GO_GetParentRelativePos(obj, obj->physics.centerOfMass);
-	obj->transform.pos = R2_Sub(obj->transform.pos, R2_Sub(comNew, comOld));
-}
-
-void PH_UpdatePosition(Object *obj, double deltaT)
-{
-	// TODO: Note that velocity is in global coordinates, physics break otherwise
-	// TODO: On second thought, let's break physics
-	
-	obj->transform.pos = R2_Add(
-			obj->transform.pos, 
-			R2_ScalarMult(obj->physics.linearVel, deltaT)
-			);
-}
-
-void PH_UpdatePhysicsMotion(Object *obj, double deltaT)
-{
-	obj->physics.prevTransform = obj->transform;
-	PH_UpdateRotation(obj, deltaT);
-	PH_UpdatePosition(obj, deltaT);
-}
-
 void PH_UpdateObjectTree(Object *root, double deltaT)
 {
-	// Assuming root not null
-	List *child;
+	ODEVector y;
+	
+	y = (ODEVector) {
+		_PH_GetDim,
+		_PH_SetNextVal,
+		_PH_UpdateVals,
+		_PH_GetVal,
+		root,
+	};
 
-	if (root->physics.enabled) {
-		PH_UpdatePhysicsMotion(root, deltaT);
+	ode(y, 0, deltaT, _PH_dydt);
+}
+
+// Local procedures
+int _PH_GetDim(void *objects)
+{
+	int count;
+	Object *root;
+	List *children;
+
+	count = 0;
+	root = (Object *) objects;
+	children = root->children;
+	while (children != NULL) {
+		count += FIELD_COUNT;
+		children = List_Tail(children);
 	}
+	return count;
+}
 
-	if (root->children != NULL) {
-		child = root->children;
-		while (child->next != NULL) {
-			PH_UpdateObjectTree((Object *) child->element, deltaT);
-			child = child->next;
+void _PH_SetNextVal(void *objects, int i, double newVal)
+{
+	Object *root, *child;
+	List *children;
+	int j, objInd;
+
+	root = (Object *) objects;
+	children = root->children;
+	objInd = i / FIELD_COUNT;
+
+	for (j = 0; j < objInd; j++) {
+		children = List_Tail(children);
+	}
+	child = List_Head(children);
+	switch (i % FIELD_COUNT) {
+		case 0:
+			child->physics.nextCenterOfMass.x = newVal;	
+			break;
+		case 1:
+			child->physics.nextCenterOfMass.y = newVal;	
+			break;
+		case 2:
+			child->physics.nextRot = newVal;
+			break;
+		case 3:
+			child->physics.nextLinearVel.x = newVal;
+			break;
+		case 4:
+			child->physics.nextLinearVel.y = newVal;
+			break;
+		case 5:
+			child->physics.nextAngularVel = newVal;
+			break;
+		default:
+			fprintf(stderr, "Error: _PH_SetNextVal: This should never be reached\n");
+			exit(1);
+			break;
+	}
+}
+
+void _PH_UpdateVals(void *objects)
+{
+	Object *root, *child;
+	List *children;
+
+	root = (Object *) objects;
+	children = root->children;
+	while (children != NULL) {
+		child = List_Head(children);
+		if (child->physics.enabled) {
+			child->physics.prevTransform = child->transform;
+			child->transform.pos = _PH_GetPosFromCOM(child, child->physics.nextRot, child->physics.nextCenterOfMass);
+			child->transform.rot = child->physics.nextRot;
+			child->physics.linearVel = child->physics.nextLinearVel;
+			child->physics.angularVel = child->physics.nextAngularVel;
 		}
-		PH_UpdateObjectTree((Object *) child->element, deltaT);
+		children = List_Tail(children);
 	}
+}
+
+double _PH_GetVal(void *objects, int i)
+{
+	Object *root, *child;
+	List *children;
+	int j, objInd;
+
+	root = (Object *) objects;
+	children = root->children;
+	objInd = i / FIELD_COUNT;
+
+	for (j = 0; j < objInd; j++) {
+		children = List_Tail(children);
+	}
+	child = List_Head(children);
+	switch (i % FIELD_COUNT) {
+		case 0:
+			return GO_PosToParentSpace(child, child->physics.centerOfMass).x;	
+			break;
+		case 1:
+			return GO_PosToParentSpace(child, child->physics.centerOfMass).y;	
+			break;
+		case 2:
+			return child->transform.rot;
+			break;
+		case 3:
+			return child->physics.linearVel.x;
+			break;
+		case 4:
+			return child->physics.linearVel.y;
+			break;
+		case 5:
+			return child->physics.angularVel;
+			break;
+		default:
+			fprintf(stderr, "Error: _PH_GetVal: This should never be reached\n");
+			exit(1);
+			break;
+	}
+}
+
+double _PH_dydt(double t, ODEVector y, int ind)
+{
+	Object *root, *child;
+	List *children;
+	int j, objInd;
+
+	root = (Object *) y.objects;
+	children = root->children;
+	objInd = ind / FIELD_COUNT;
+
+	for (j = 0; j < objInd; j++) {
+		children = List_Tail(children);
+	}
+	child = List_Head(children);
+	switch (ind % FIELD_COUNT) {
+		case 0:
+			return child->physics.linearVel.x;
+			break;
+		case 1:
+			return child->physics.linearVel.y;	
+			break;
+		case 2:
+			return child->physics.angularVel;
+			break;
+		case 3:
+			return 0;
+			break;
+		case 4:
+			return 0;
+			break;
+		case 5:
+			return 0;
+			break;
+		default:
+			fprintf(stderr, "Error: _PH_dydt: This should never be reached\n");
+			exit(1);
+			break;
+	}
+}
+
+Real2 _PH_GetPosFromCOM(Object *object, double rot, Real2 centerOfMass)
+{
+	return R2_Add(R2_RotateDeg(R2_ScalarMult(object->physics.centerOfMass, -1), rot), centerOfMass);
 }

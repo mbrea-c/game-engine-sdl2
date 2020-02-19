@@ -64,7 +64,8 @@ void _GR_RenderRec(Object *root)
 	int xWithinRange, yWithinRange;
 	Object *camera = GO_GetCamera();
 	List *children;
-	Transform rootGlobalTransform, cameraGlobalTransform, relativeTransform;
+	Transform relativeTransform;
+
 	if (root == NULL) {
 		fprintf(stderr, "Cannot render a null root\n");
 		exit(1);
@@ -72,9 +73,8 @@ void _GR_RenderRec(Object *root)
 	children = root->children;
 	
 	// Get global positions and check if object is in camera view
-	rootGlobalTransform = GO_GetRootTransform(root);
-	cameraGlobalTransform = GO_GetRootTransform(camera);
-	relativeTransform = GO_GetRelativeTransform_T(&cameraGlobalTransform, &rootGlobalTransform);
+	relativeTransform  = GO_TransformToLocalSpace(camera, GO_TransformToRootSpaceObj(root));
+
 	xWithinRange = relativeTransform.pos.x >= 0 && relativeTransform.pos.x <= _GR_GetCameraWidth(camera);
 	yWithinRange = relativeTransform.pos.y >= 0 && relativeTransform.pos.y <= _GR_GetCameraHeight(camera);
 
@@ -118,10 +118,10 @@ void _GR_RenderTrail(Object *trail, Object *camera)
 	trailObj = (Trail *) trail->obj;
 	length = trailObj->length;
 	oldest = i = trailObj->next;
-	localPointPos = GO_GetLocalPositionTo(camera, trailObj->points[oldest]);
+	localPointPos = GO_PosToLocalSpace(camera, trailObj->points[oldest]);
 	for (count = 0; count < length; i = (i + 1) % length, count++) {
 		prevPos = localPointPos;
-		localPointPos = GO_GetLocalPositionTo(camera, trailObj->points[i]);
+		localPointPos = GO_PosToLocalSpace(camera, trailObj->points[i]);
 		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
 		SDL_RenderDrawLine(
 				gRenderer, (int) (prevPos.x * xPixelsPerUnit),
@@ -166,10 +166,10 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
 
 	currVertex = ((Polygon *) obj->collider.collider)->vertices;
-	firstPos = localPointPos = GO_GetLocalPositionTo(camera, GO_GetRootPositionFrom(obj, *((Real2 *)List_Head(currVertex))));
+	firstPos = localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
 	while (currVertex != NULL) {
 		prevPos = localPointPos;
-		localPointPos = GO_GetLocalPositionTo(camera, GO_GetRootPositionFrom(obj, *((Real2 *)List_Head(currVertex))));
+		localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
 		currVertex = List_Tail(currVertex);
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
 		SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
@@ -194,6 +194,7 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 			);
 }
 
+//TODO: I broke rendering with updates. FIX
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 {
 	//TODO: Figure out how to optimize by minimizing floating point operations
@@ -265,9 +266,10 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	// Render holes (debug for now)
 	while (holes != NULL) {
 		hole = List_Head(holes);
+		Real2 holepos = hole->pos;
 		currBlock = (SDL_Rect) {
-			(int) ((relativeTransform.pos.x + R2_RotateDeg(hole->pos, relativeTransform.rot).x) * xPixelsPerUnit) -4,
-			(int) ((relativeTransform.pos.y + R2_RotateDeg(hole->pos, relativeTransform.rot).y) * yPixelsPerUnit) -4,
+			(int) ((relativeTransform.pos.x + R2_RotateDeg(holepos, relativeTransform.rot).x) * xPixelsPerUnit) -4,
+			(int) ((relativeTransform.pos.y + R2_RotateDeg(holepos, relativeTransform.rot).y) * yPixelsPerUnit) -4,
 			8,
 			8,
 		};

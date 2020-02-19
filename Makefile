@@ -3,7 +3,8 @@ OBJS = src/LTexture.h src/LTexture.c src/GameObject.c src/GameObject.h \
 	src/Graphics.h src/Graphics.c src/List.c src/List.h src/Real2.c \
 	src/Real2.h src/Assets.c src/Assets.h src/Typedefs.h src/Physics.c \
 	src/Physics.h src/CollisionDetection.c src/CollisionDetection.h \
-	src/Polygon.c src/Polygon.h src/Interval.c src/Interval.h
+	src/Polygon.c src/Polygon.h src/Interval.c src/Interval.h \
+	src/ODE_Euler.c src/ODE_Euler.h
 TESTS = test/testlist.c
 
 #compiler we're using

@@ -148,14 +148,14 @@ Interval CD_ProjectOnAxis(Object *obj, Real2 axis)
 		interval.end = 0;
 	} else {
 		// Initialize interval to first element
-		rootVertex = GO_GetRootPositionFrom(obj, *((Real2 *)List_Head(vertex)));
+		rootVertex = GO_PosToRootSpace(obj, *((Real2 *)List_Head(vertex)));
 		projection = R2_ProjectOnUnit(rootVertex, axisNorm);
 		interval.start = projection;
 		interval.end = projection;
 		vertex = List_Tail(vertex);
 		// Run through rest of vertices
 		while (vertex != NULL) {
-			rootVertex = GO_GetRootPositionFrom(obj, *((Real2 *)List_Head(vertex)));
+			rootVertex = GO_PosToRootSpace(obj, *((Real2 *)List_Head(vertex)));
 			projection = R2_ProjectOnUnit(rootVertex, axisNorm);
 			interval.start = projection < interval.start ? projection : interval.start;
 			interval.end = projection > interval.end ? projection : interval.end;
@@ -179,11 +179,11 @@ int CD_MayCollide(Object *obj1, Object *obj2)
 		fprintf(stderr, "CD_MayCollide: obj1's collider is NULL\n");
 		exit(1);
 	}
-	nextVertex = GO_GetRootPositionFrom(obj1, *((Real2 *)List_Head(vertexList)));
+	nextVertex = GO_PosToRootSpace(obj1, *((Real2 *)List_Head(vertexList)));
 	while (List_HasTail(vertexList)) {
 		currVertex = nextVertex;
 		vertexList = List_Tail(vertexList);
-		nextVertex = GO_GetRootPositionFrom(obj1, *((Real2 *)List_Head(vertexList)));
+		nextVertex = GO_PosToRootSpace(obj1, *((Real2 *)List_Head(vertexList)));
 		axis = R2_Norm(R2_Normal(R2_Sub(nextVertex, currVertex)));
 		intervalObj1 = CD_ProjectOnAxis(obj1, axis);
 		intervalObj2 = CD_ProjectOnAxis(obj2, axis);
