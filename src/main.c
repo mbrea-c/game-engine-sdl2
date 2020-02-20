@@ -9,6 +9,7 @@
 #include "Assets.h"
 #include "Physics.h"
 #include "CollisionDetection.h"
+#include "Input.h"
 
 #define FPS_CAP 60
 #define TICKS_PER_FRAME 1000 / FPS_CAP
@@ -66,8 +67,12 @@ int main(int argc, char **argv)
 			}
 		}
 		if (willUpdate) {
+			/*PH_ApplyForce(ship, R2_ScalarMult(R2_Normal(PH_GetCenterOfMass(ship)), 500), (Real2) {0, 0} );*/
+			/*PH_ApplyForce(ship, R2_ScalarMult(R2_Normal(PH_GetCenterOfMass(ship)), -500), R2_ScalarMult(PH_GetCenterOfMass(ship), 2));*/
+			PH_ApplyForce(ship, R2_ScalarMult(R2_Sub(GO_PosToRootSpace(camera, IN_GetMouseCameraPos()), ship->transform.pos), 500), (Real2) {0,0});
 			GO_PushToTrail(trail, GO_PosToRootSpace(ship, ship->physics.centerOfMass));
 			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
+			PH_ClearForces(ship);
 			if (CD_MayCollide(ship, bullet)) {
 				printf("BOOM BAM CRASH BULLIT HIT!!!1!\n");
 				GO_ShipAddHole(ship, GO_PosToLocalSpace(ship, GO_PosToRootSpace(bullet, CD_PolygonGetFirstVertex(bullet))));

@@ -18,6 +18,8 @@
 void GR_Init();
 void GR_Render(Object *root);
 SDL_Renderer *GR_GetMainRenderer(void);
+double GR_GetCameraHeight(Object *camera);
+double GR_GetCameraWidth(Object *camera);
 
 
 #endif //GRAPHICS_H

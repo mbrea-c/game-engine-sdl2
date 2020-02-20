@@ -4,8 +4,6 @@ SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 
 // Local procedure declarations
-double _GR_GetCameraHeight(Object *camera);
-double _GR_GetCameraWidth(Object *camera);
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform);
 void _GR_RenderTrail(Object *trail, Object *camera);
 void _GR_RenderPolygonCollider(Object *obj, Object *camera);
@@ -75,8 +73,8 @@ void _GR_RenderRec(Object *root)
 	// Get global positions and check if object is in camera view
 	relativeTransform  = GO_TransformToLocalSpace(camera, GO_TransformToRootSpaceObj(root));
 
-	xWithinRange = relativeTransform.pos.x >= 0 && relativeTransform.pos.x <= _GR_GetCameraWidth(camera);
-	yWithinRange = relativeTransform.pos.y >= 0 && relativeTransform.pos.y <= _GR_GetCameraHeight(camera);
+	xWithinRange = relativeTransform.pos.x >= 0 && relativeTransform.pos.x <= GR_GetCameraWidth(camera);
+	yWithinRange = relativeTransform.pos.y >= 0 && relativeTransform.pos.y <= GR_GetCameraHeight(camera);
 
 
 	// Render if in view
@@ -112,8 +110,8 @@ void _GR_RenderTrail(Object *trail, Object *camera)
 	Trail *trailObj;
 	Real2 localPointPos, prevPos;
 
-	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
+	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
+	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 
 	trailObj = (Trail *) trail->obj;
 	length = trailObj->length;
@@ -142,8 +140,8 @@ void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransfo
 	
 	proj = (Projectile *)obj->obj;
 	size = proj->size;
-	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
+	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
+	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 	centerOfRotation = (SDL_Point) { xPixelsPerUnit * size/2, yPixelsPerUnit * size/2 };
 	currBlock = (SDL_Rect) {
 		(int) (relativeTransform.pos.x * xPixelsPerUnit),
@@ -162,8 +160,8 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
 
-	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
+	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
+	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 
 	currVertex = ((Polygon *) obj->collider.collider)->vertices;
 	firstPos = localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
@@ -211,8 +209,8 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	
 	holes = ((Ship *) ship->obj)->holes;
 	centerOfRotation = (SDL_Point) { 0, 0 };
-	xPixelsPerUnit = SCREEN_WIDTH / _GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / _GR_GetCameraHeight(camera);
+	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
+	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 	shipWidth = ((Ship *) ship->obj)->width;
 	shipHeight = ((Ship *) ship->obj)->height;
 	rotatedBasisX = R2_RotateDeg((Real2) {xPixelsPerUnit, 0}, relativeTransform.rot);
@@ -297,14 +295,14 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 
 }
 
-double _GR_GetCameraWidth(Object *camera)
+double GR_GetCameraWidth(Object *camera)
 {
 	return ((Camera *) camera->obj)->width;
 }
 
-double _GR_GetCameraHeight(Object *camera)
+double GR_GetCameraHeight(Object *camera)
 {
-	return _GR_GetCameraWidth(camera) * (double) SCREEN_HEIGHT / (double) SCREEN_WIDTH;
+	return GR_GetCameraWidth(camera) * (double) SCREEN_HEIGHT / (double) SCREEN_WIDTH;
 }
 
 SDL_Renderer *GR_GetMainRenderer(void)

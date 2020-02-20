@@ -9,6 +9,7 @@
     #define M_PI 3.14159265358979323846
 #endif /*M_PI*/
 
+enum ComponentNames {R2_X, R2_Y};
 typedef struct Real2 Real2;
 
 struct Real2 {

@@ -28,31 +28,72 @@ int PH_IsPhysicsEnabled(Object *obj)
 
 Real2 PH_GetLinearVelocity(Object *obj)
 {
-	_PH_CheckPhysicsEnabled(obj);
 	return obj->physics.linearVel;
 }
 
 Real2 PH_GetCenterOfMass(Object *obj)
 {
-	_PH_CheckPhysicsEnabled(obj);
 	return obj->physics.centerOfMass;
+}
+
+double PH_GetLinearVelocityComponent(Object *obj, int component)
+{
+	switch (component) {
+		case R2_X:
+			return obj->physics.linearVel.x;
+			break;
+		case R2_Y:
+			return obj->physics.linearVel.y;
+			break;
+	}
+}
+
+double PH_GetCenterOfMassComponent(Object *obj, int component)
+{
+	switch (component) {
+		case R2_X:
+			return obj->physics.centerOfMass.x;
+			break;
+		case R2_Y:
+			return obj->physics.centerOfMass.y;
+			break;
+	}
+}
+
+double PH_GetForceAccumComponent(Object *obj, int component)
+{
+	switch (component) {
+		case R2_X:
+			return obj->physics.forceAccum.x;
+			break;
+		case R2_Y:
+			return obj->physics.forceAccum.y;
+			break;
+	}
+}
+
+Real2 PH_GetForceAccum(Object *obj)
+{
+	return obj->physics.forceAccum;
+}
+
+double PH_GetTorqueAccum(Object *obj)
+{
+	return obj->physics.torqueAccum;
 }
 
 double PH_GetAngualrVelocity(Object *obj)
 {
-	_PH_CheckPhysicsEnabled(obj);
 	return obj->physics.angularVel;
 }
 
 double PH_GetMass(Object *obj)
 {
-	_PH_CheckPhysicsEnabled(obj);
 	return obj->physics.mass;
 }
 
 double PH_GetMomentOfInertia(Object *obj)
 {
-	_PH_CheckPhysicsEnabled(obj);
 	return obj->physics.momentOfInertia;
 }
 
@@ -76,6 +117,16 @@ void PH_SetAngularVelocity(Object *obj, double angularVel)
 void PH_SetCenterOfMass(Object *obj, Real2 centerOfMass)
 {
 	obj->physics.centerOfMass = centerOfMass;
+}
+
+void PH_SetForceAccum(Object *obj, Real2 force)
+{
+	obj->physics.forceAccum = force;
+}
+
+void PH_SetTorqueAccum(Object *obj, double torque)
+{
+	obj->physics.torqueAccum = torque;
 }
 
 void PH_SetMass(Object *obj, double mass)
@@ -160,6 +211,25 @@ void PH_UpdateObjectTree(Object *root, double deltaT)
 	ode(y, 0, deltaT, _PH_dydt);
 }
 
+void PH_ApplyForce(Object *obj, Real2 force, Real2 localPos)
+{
+	// Point of application of force relative to center of mass
+	Real2 COMSpacePos;
+	double newTorque;
+
+	COMSpacePos = R2_Sub(localPos, PH_GetCenterOfMass(obj));
+	newTorque = PH_GetTorqueAccum(obj) + COMSpacePos.x * force.y - COMSpacePos.y * force.x;
+
+	PH_SetForceAccum(obj, R2_Add(PH_GetForceAccum(obj), force));
+	PH_SetTorqueAccum(obj, newTorque * 180 / M_PI);
+}
+
+void PH_ClearForces(Object *obj)
+{
+	PH_SetForceAccum(obj, (Real2) {0, 0});
+	PH_SetTorqueAccum(obj, 0);
+}
+
 // Local procedures
 int _PH_GetDim(void *objects)
 {
@@ -208,6 +278,7 @@ void _PH_SetNextVal(void *objects, int i, double newVal)
 			child->physics.nextLinearVel.y = newVal;
 			break;
 		case 5:
+			printf("Updating %s angvel to %f\n", child->name, newVal);
 			child->physics.nextAngularVel = newVal;
 			break;
 		default:
@@ -262,13 +333,13 @@ double _PH_GetVal(void *objects, int i)
 			return child->transform.rot;
 			break;
 		case 3:
-			return child->physics.linearVel.x;
+			return PH_GetLinearVelocityComponent(child, R2_X);
 			break;
 		case 4:
-			return child->physics.linearVel.y;
+			return PH_GetLinearVelocityComponent(child, R2_Y);
 			break;
 		case 5:
-			return child->physics.angularVel;
+			return PH_GetAngualrVelocity(child);
 			break;
 		default:
 			fprintf(stderr, "Error: _PH_GetVal: This should never be reached\n");
@@ -293,22 +364,22 @@ double _PH_dydt(double t, ODEVector y, int ind)
 	child = List_Head(children);
 	switch (ind % FIELD_COUNT) {
 		case 0:
-			return child->physics.linearVel.x;
+			return PH_GetLinearVelocityComponent(child, R2_X);
 			break;
 		case 1:
-			return child->physics.linearVel.y;	
+			return PH_GetLinearVelocityComponent(child, R2_Y);	
 			break;
 		case 2:
-			return child->physics.angularVel;
+			return PH_GetAngualrVelocity(child);
 			break;
 		case 3:
-			return 0;
+			return PH_GetForceAccumComponent(child, R2_X) / PH_GetMass(child);
 			break;
 		case 4:
-			return 0;
+			return PH_GetForceAccumComponent(child, R2_Y) / PH_GetMass(child);
 			break;
 		case 5:
-			return 0;
+			return PH_GetTorqueAccum(child) / PH_GetMomentOfInertia(child);
 			break;
 		default:
 			fprintf(stderr, "Error: _PH_dydt: This should never be reached\n");

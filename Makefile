@@ -4,7 +4,7 @@ OBJS = src/LTexture.h src/LTexture.c src/GameObject.c src/GameObject.h \
 	src/Real2.h src/Assets.c src/Assets.h src/Typedefs.h src/Physics.c \
 	src/Physics.h src/CollisionDetection.c src/CollisionDetection.h \
 	src/Polygon.c src/Polygon.h src/Interval.c src/Interval.h \
-	src/ODE_Euler.c src/ODE_Euler.h
+	src/ODE_Euler.c src/ODE_Euler.h src/Input.c src/Input.h
 TESTS = test/testlist.c
 
 #compiler we're using

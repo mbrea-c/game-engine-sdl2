@@ -73,8 +73,9 @@ struct Physics {
 	int enabled;
 	double mass;
 	double momentOfInertia;
-	// Force accumulator
+	// Accumulators
 	Real2 forceAccum;
+	double torqueAccum;
 	// Mutable data
 	Real2 linearVel;
 	double angularVel;
