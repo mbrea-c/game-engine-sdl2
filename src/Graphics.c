@@ -1,7 +1,10 @@
 #include "Graphics.h"
 
+
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
+double gYPixelsPerUnit = 0;
+double gXPixelsPerUnit = 0;
 
 // Local procedure declarations
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform);
@@ -9,6 +12,18 @@ void _GR_RenderTrail(Object *trail, Object *camera);
 void _GR_RenderPolygonCollider(Object *obj, Object *camera);
 void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform);
 void _GR_RenderRec(Object *root);
+void _GR_DrawLine(Object *camera, Real2 start, Real2 end, int r, int g, int b, int a);
+void _GR_DrawNetForce(Object *obj, Object *camera);
+void _GR_SetUpRenderingGlobals(void);
+
+void _GR_SetUpRenderingGlobals(void)
+{
+	Object *camera;
+
+	camera = GO_GetCamera();
+	gXPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
+	gYPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
+}
 
 void GR_Init(void)
 {
@@ -52,8 +67,18 @@ void GR_Render(Object *root)
 	//Clear screen
 	SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0x00);
 	SDL_RenderClear(gRenderer);
+	_GR_SetUpRenderingGlobals();
 
 	_GR_RenderRec(root);
+	if (DRAW_FORCES) {
+		List *forcesLog = PH_GetForcesLog();
+		Force force;
+		while (forcesLog != NULL) {
+			force = *(Force *)List_Head(forcesLog);
+			GR_DrawForce(force.obj, GO_GetCamera(), force.force, force.localPos);
+			forcesLog = List_Tail(forcesLog);
+		}
+	}
 	SDL_RenderPresent(gRenderer);
 }
 
@@ -63,6 +88,7 @@ void _GR_RenderRec(Object *root)
 	Object *camera = GO_GetCamera();
 	List *children;
 	Transform relativeTransform;
+
 
 	if (root == NULL) {
 		fprintf(stderr, "Cannot render a null root\n");
@@ -75,8 +101,7 @@ void _GR_RenderRec(Object *root)
 
 	xWithinRange = relativeTransform.pos.x >= 0 && relativeTransform.pos.x <= GR_GetCameraWidth(camera);
 	yWithinRange = relativeTransform.pos.y >= 0 && relativeTransform.pos.y <= GR_GetCameraHeight(camera);
-
-
+	
 	// Render if in view
 	if (xWithinRange && yWithinRange) {
 		switch (root->type) {
@@ -89,6 +114,12 @@ void _GR_RenderRec(Object *root)
 			case OBJ_PROJECTILE:
 				_GR_RenderProjectile(root, camera, relativeTransform);
 				break;
+		}
+		if (root->collider.enabled && root->collider.type == COLL_POLYGON && DRAW_COLLIDERS) {
+			_GR_RenderPolygonCollider(root, camera);
+		}
+		if (PH_IsPhysicsEnabled(root) && DRAW_FORCES) {
+			_GR_DrawNetForce(root, camera);
 		}
 	}
 
@@ -105,49 +136,44 @@ void _GR_RenderRec(Object *root)
 
 void _GR_RenderTrail(Object *trail, Object *camera)
 {
-	double xPixelsPerUnit, yPixelsPerUnit;
-	int count, i, length, oldest;
+	int count, i, length;
 	Trail *trailObj;
 	Real2 localPointPos, prevPos;
-
-	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
+	RGBA color;
 
 	trailObj = (Trail *) trail->obj;
+	color = trailObj->color;
 	length = trailObj->length;
-	oldest = i = trailObj->next;
-	localPointPos = GO_PosToLocalSpace(camera, trailObj->points[oldest]);
+	i = trailObj->next;
+	localPointPos = GO_PosToLocalSpace(camera, trailObj->points[i]);
 	for (count = 0; count < length; i = (i + 1) % length, count++) {
 		prevPos = localPointPos;
 		localPointPos = GO_PosToLocalSpace(camera, trailObj->points[i]);
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+		SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
 		SDL_RenderDrawLine(
-				gRenderer, (int) (prevPos.x * xPixelsPerUnit),
-				(int) (prevPos.y * yPixelsPerUnit),
-				(int) (localPointPos.x * xPixelsPerUnit),
-				(int) (localPointPos.y * yPixelsPerUnit)
+				gRenderer, (int) (prevPos.x * gXPixelsPerUnit),
+				(int) (prevPos.y * gYPixelsPerUnit),
+				(int) (localPointPos.x * gXPixelsPerUnit),
+				(int) (localPointPos.y * gYPixelsPerUnit)
 				);
-		/*printf("DEBUG: Rendering trail %s\n", trail->name);*/
 	}
 }
 
 void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform)
 {
-	double xPixelsPerUnit, yPixelsPerUnit, size;
+	double size;
 	SDL_Point centerOfRotation;
 	SDL_Rect currBlock;
 	Projectile *proj;
 	
 	proj = (Projectile *)obj->obj;
 	size = proj->size;
-	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
-	centerOfRotation = (SDL_Point) { xPixelsPerUnit * size/2, yPixelsPerUnit * size/2 };
+	centerOfRotation = (SDL_Point) { gXPixelsPerUnit * size/2, gYPixelsPerUnit * size/2 };
 	currBlock = (SDL_Rect) {
-		(int) (relativeTransform.pos.x * xPixelsPerUnit),
-		(int) (relativeTransform.pos.y * yPixelsPerUnit),
-		(int) ceil(xPixelsPerUnit * proj->size),
-		(int) ceil(yPixelsPerUnit * proj->size),
+		(int) (relativeTransform.pos.x * gXPixelsPerUnit),
+		(int) (relativeTransform.pos.y * gYPixelsPerUnit),
+		(int) ceil(gXPixelsPerUnit * proj->size),
+		(int) ceil(gYPixelsPerUnit * proj->size),
 	};
 
 	LT_RenderRect(proj->projectileType->texture, &currBlock, NULL, -R2_AngleDeg(obj->physics.linearVel), &centerOfRotation, SDL_FLIP_NONE);
@@ -156,12 +182,8 @@ void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransfo
 
 void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 {
-	double xPixelsPerUnit, yPixelsPerUnit;
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
-
-	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 
 	currVertex = ((Polygon *) obj->collider.collider)->vertices;
 	firstPos = localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
@@ -171,33 +193,61 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 		currVertex = List_Tail(currVertex);
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
 		SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
-				(int) (localPointPos.x * xPixelsPerUnit) - 2,
-				(int) (localPointPos.y * yPixelsPerUnit) - 2,
+				(int) (localPointPos.x * gXPixelsPerUnit) - 2,
+				(int) (localPointPos.y * gYPixelsPerUnit) - 2,
 				4,
 				4,
 				});
 		SDL_RenderDrawLine(
-				gRenderer, (int) (prevPos.x * xPixelsPerUnit),
-				(int) (prevPos.y * yPixelsPerUnit),
-				(int) (localPointPos.x * xPixelsPerUnit),
-				(int) (localPointPos.y * yPixelsPerUnit)
+				gRenderer, (int) (prevPos.x * gXPixelsPerUnit),
+				(int) (prevPos.y * gYPixelsPerUnit),
+				(int) (localPointPos.x * gXPixelsPerUnit),
+				(int) (localPointPos.y * gYPixelsPerUnit)
 				);
 	}
 	SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
 	SDL_RenderDrawLine(
-			gRenderer, (int) (localPointPos.x * xPixelsPerUnit),
-			(int) (localPointPos.y * yPixelsPerUnit),
-			(int) (firstPos.x * xPixelsPerUnit),
-			(int) (firstPos.y * yPixelsPerUnit)
+			gRenderer, (int) (localPointPos.x * gXPixelsPerUnit),
+			(int) (localPointPos.y * gYPixelsPerUnit),
+			(int) (firstPos.x * gXPixelsPerUnit),
+			(int) (firstPos.y * gYPixelsPerUnit)
 			);
 }
 
-//TODO: I broke rendering with updates. FIX
+void _GR_DrawLine(Object *camera, Real2 start, Real2 end, int r, int g, int b, int a)
+{
+	start = GO_PosToLocalSpace(camera, start);
+	end = GO_PosToLocalSpace(camera, end);
+
+	SDL_SetRenderDrawColor(gRenderer, r, g, b, a);
+	SDL_RenderDrawLine(
+			gRenderer,
+			start.x * gXPixelsPerUnit,
+			start.y * gYPixelsPerUnit,
+			end.x * gXPixelsPerUnit,
+			end.y * gYPixelsPerUnit
+			);
+}
+
+void GR_DrawForce(Object *obj, Object *camera, Real2 force, Real2 localPos)
+{
+	_GR_DrawLine(
+		camera,
+		GO_PosToRootSpace(obj, localPos),
+		R2_Add(GO_PosToRootSpace(obj, localPos), R2_ScalarMult(force, 1.0/50)),
+		0, 0, 255, 255
+		);
+}
+
+void _GR_DrawNetForce(Object *obj, Object *camera)
+{
+	GR_DrawForce(obj, camera, PH_GetForceAccum(obj), PH_GetCenterOfMass(obj));
+}
+
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 {
 	//TODO: Figure out how to optimize by minimizing floating point operations
 	//TODO: Block rendering seems somewhat unstable. Try using rotated basis instead
-	double xPixelsPerUnit, yPixelsPerUnit;
 	int x, y, shipWidth, shipHeight;
 	Block *block;
 	List *holes;
@@ -209,22 +259,20 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	
 	holes = ((Ship *) ship->obj)->holes;
 	centerOfRotation = (SDL_Point) { 0, 0 };
-	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
-	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 	shipWidth = ((Ship *) ship->obj)->width;
 	shipHeight = ((Ship *) ship->obj)->height;
-	rotatedBasisX = R2_RotateDeg((Real2) {xPixelsPerUnit, 0}, relativeTransform.rot);
-	rotatedBasisY = R2_RotateDeg((Real2) {0, yPixelsPerUnit}, relativeTransform.rot);
+	rotatedBasisX = R2_RotateDeg((Real2) {gXPixelsPerUnit, 0}, relativeTransform.rot);
+	rotatedBasisY = R2_RotateDeg((Real2) {0, gYPixelsPerUnit}, relativeTransform.rot);
 
 	for (y = 0; y < shipHeight; y++) {
 		for (x = 0; x < shipWidth; x++) {
 			block = GO_ShipGetBlock(ship, x, y);
 			rotatedBlockPos = R2_RotateDeg((Real2) { x, y }, relativeTransform.rot);
 			currBlock = (SDL_Rect) {
-				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * xPixelsPerUnit),
-				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * yPixelsPerUnit),
-				(int) ceil(xPixelsPerUnit),
-				(int) ceil(yPixelsPerUnit),
+				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * gXPixelsPerUnit),
+				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * gYPixelsPerUnit),
+				(int) ceil(gXPixelsPerUnit),
+				(int) ceil(gYPixelsPerUnit),
 			};
 			switch (block->type) {
 				case BLOCK_TEST:
@@ -266,8 +314,8 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 		hole = List_Head(holes);
 		Real2 holepos = hole->pos;
 		currBlock = (SDL_Rect) {
-			(int) ((relativeTransform.pos.x + R2_RotateDeg(holepos, relativeTransform.rot).x) * xPixelsPerUnit) -4,
-			(int) ((relativeTransform.pos.y + R2_RotateDeg(holepos, relativeTransform.rot).y) * yPixelsPerUnit) -4,
+			(int) ((relativeTransform.pos.x + R2_RotateDeg(holepos, relativeTransform.rot).x) * gXPixelsPerUnit) -4,
+			(int) ((relativeTransform.pos.y + R2_RotateDeg(holepos, relativeTransform.rot).y) * gYPixelsPerUnit) -4,
 			8,
 			8,
 		};
@@ -279,20 +327,18 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	//TODO: DEBUG UGLY STUFF. DELETE OR FIX vvvvvvvvvv
 	rotatedBlockPos = R2_RotateDeg(ship->physics.centerOfMass, relativeTransform.rot);
 	currBlock = (SDL_Rect) {
-				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * xPixelsPerUnit) -2,
-				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * yPixelsPerUnit) -2,
+				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * gXPixelsPerUnit) -2,
+				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * gYPixelsPerUnit) -2,
 				4,
 				4,
 	};
 
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
 	SDL_RenderDrawRect(gRenderer, &currBlock);
-	SDL_RenderDrawLine(gRenderer, currBlock.x, currBlock.y, (int) (relativeTransform.pos.x * xPixelsPerUnit),
-		(int) (relativeTransform.pos.y * yPixelsPerUnit));
+	SDL_RenderDrawLine(gRenderer, currBlock.x, currBlock.y, (int) (relativeTransform.pos.x * gXPixelsPerUnit),
+		(int) (relativeTransform.pos.y * gYPixelsPerUnit));
 
-	_GR_RenderPolygonCollider(ship, camera);
 	//END_DEBUG^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 }
 
 double GR_GetCameraWidth(Object *camera)

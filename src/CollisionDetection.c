@@ -189,6 +189,21 @@ int CD_MayCollide(Object *obj1, Object *obj2)
 		intervalObj2 = CD_ProjectOnAxis(obj2, axis);
 		mayCollide = mayCollide && IN_IsIntersecting(&intervalObj1, &intervalObj2);
 	}
+	vertexList = ((Polygon *) obj2->collider.collider)->vertices;
+	if (vertexList == NULL) {
+		fprintf(stderr, "CD_MayCollide: obj1's collider is NULL\n");
+		exit(1);
+	}
+	nextVertex = GO_PosToRootSpace(obj2, *((Real2 *)List_Head(vertexList)));
+	while (List_HasTail(vertexList)) {
+		currVertex = nextVertex;
+		vertexList = List_Tail(vertexList);
+		nextVertex = GO_PosToRootSpace(obj2, *((Real2 *)List_Head(vertexList)));
+		axis = R2_Norm(R2_Normal(R2_Sub(nextVertex, currVertex)));
+		intervalObj1 = CD_ProjectOnAxis(obj1, axis);
+		intervalObj2 = CD_ProjectOnAxis(obj2, axis);
+		mayCollide = mayCollide && IN_IsIntersecting(&intervalObj1, &intervalObj2);
+	}
 	return mayCollide;
 }
 

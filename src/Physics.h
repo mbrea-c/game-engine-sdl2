@@ -2,9 +2,12 @@
 #define PHYSICS_H
 
 #include <stdio.h>
+#include "Typedefs.h"
 #include "GameObject.h"
 #include "List.h"
 #include "ODE_Euler.h"
+#include "Graphics.h"
+
 
 // Getters
 int PH_IsPhysicsEnabled(Object *obj);
@@ -15,7 +18,7 @@ double PH_GetCenterOfMassComponent(Object *obj, int component);
 Real2 PH_GetForceAccum(Object *obj);
 double PH_GetForceAccumComponent(Object *obj, int component);
 double PH_GetTorqueAccum(Object *obj);
-double PH_GetAngualrVelocity(Object *obj);
+double PH_GetAngularVelocity(Object *obj);
 double PH_GetMass(Object *obj);
 double PH_GetMomentOfInertia(Object *obj);
 
@@ -38,6 +41,8 @@ void PH_UpdateShipPhysicsData(Object *ship); // Update mass, com and moi
 // General Object procedures
 void PH_ApplyForce(Object *obj, Real2 force, Real2 pos);
 void PH_ClearForces(Object *obj);
+void PH_ClearAllForces(Object *root);
+List *PH_GetForcesLog(void);
 
 // Main updater
 void PH_UpdateObjectTree(Object *root, double deltaT);

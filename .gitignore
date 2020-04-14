@@ -1,5 +1,5 @@
-testbin
-testbin/*
 bin
 bin/*
+testbin
+testbin/*
 shipsdl

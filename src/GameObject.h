@@ -58,7 +58,7 @@ Object *GO_GetCamera(void);
 void GO_SetCamera(Object *camera);
 
 // Trail procedures
-Object *GO_CreateTrail(char *name, Object *parent, int length);
+Object *GO_CreateTrail(char *name, Object *parent, int length, int r, int g, int b, int a);
 void GO_PushToTrail(Object *trail, Real2 globalPoint);
 
 #endif //GAMEOBJECT_H

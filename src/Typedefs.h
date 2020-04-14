@@ -62,6 +62,21 @@ typedef struct Material Material;
 typedef struct WallType WallType;
 typedef struct ProjectileType ProjectileType;
 typedef struct ShipHole ShipHole;
+typedef struct Force Force;
+typedef struct RGBA RGBA;
+
+struct RGBA {
+	int r;
+	int g;
+	int b;
+	int a;
+};
+
+struct Force {
+	Object *obj;
+	Real2 force;
+	Real2 localPos;
+};
 
 struct Transform {
 	Real2 pos;
@@ -144,6 +159,8 @@ struct Trail {
 	int length;
 	int next;
 	Real2 *points;
+	RGBA color;
+	int _initialized;
 };
 
 struct WallType {

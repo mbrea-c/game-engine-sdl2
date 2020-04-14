@@ -397,6 +397,7 @@ Object *GO_CreateProjectile(char *name, double x, double y, Object *parent, int 
 	PH_SetAngularVelocity(projObj, 0);
 	PH_SetCenterOfMass(projObj, (Real2) {size/2, size/2});
 	PH_SetMass(projObj, gProjectileTypes[projectileType]->mass);
+	PH_SetMomentOfInertia(projObj, size * size * gProjectileTypes[projectileType]->mass / 2);
 
 	// Initialize collider
 	projObj->collider.enabled = 1;
@@ -453,12 +454,14 @@ Object *GO_GetCamera(void)
 
 // Trail procedures
 
-Object *GO_CreateTrail(char *name, Object *parent, int length)
+Object *GO_CreateTrail(char *name, Object *parent, int length, int r, int g, int b, int a)
 {
 	Trail *trailObj = malloc(sizeof(Trail));
 	trailObj->length = length;
 	trailObj->points = calloc(length, sizeof(Real2));
 	trailObj->next = 0;
+	trailObj->color = (RGBA) { r, g, b, a };
+	trailObj->_initialized = 0;
 	Object *newTrail = GO_CreateObject(OBJ_TRAIL, name, 0, 0, 0, trailObj, parent);
 	return newTrail;
 }
@@ -466,6 +469,14 @@ Object *GO_CreateTrail(char *name, Object *parent, int length)
 void GO_PushToTrail(Object *trail, Real2 globalPoint)
 {
 	Trail *trailObj = (Trail *) trail->obj;
-	trailObj->points[trailObj->next] = globalPoint;
-	trailObj->next = (trailObj->next + 1) % trailObj->length;
+	if (!trailObj->_initialized) {
+		int i;
+		for (i = 0; i < trailObj->length; i++) {
+			trailObj->points[i] = globalPoint;
+		}
+		trailObj->_initialized = 1;
+	} else {
+		trailObj->points[trailObj->next] = globalPoint;
+		trailObj->next = (trailObj->next + 1) % trailObj->length;
+	}
 }
