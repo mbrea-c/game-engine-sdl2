@@ -73,7 +73,7 @@ void GR_Render(Object *root)
 	if (DRAW_FORCES) {
 		List *forcesLog = PH_GetForcesLog();
 		Force force;
-		while (forcesLog != NULL) {
+		while (!List_IsEmpty(forcesLog)) {
 			force = *(Force *)List_Head(forcesLog);
 			GR_DrawForce(force.obj, GO_GetCamera(), force.force, force.localPos);
 			forcesLog = List_Tail(forcesLog);
@@ -125,12 +125,9 @@ void _GR_RenderRec(Object *root)
 
 	// Recursively render children
 	//TODO: Recursion here is not efficient, this is just quick'n'dirty testing
-	if (children != NULL) {
-		while (children->next != NULL) {
-			_GR_RenderRec(children->element);
-			children = children->next;
-		}
+	while (!List_IsEmpty(children)) {
 		_GR_RenderRec(children->element);
+		children = List_Tail(children);
 	}
 }
 
@@ -187,7 +184,7 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 
 	currVertex = ((Polygon *) obj->collider.collider)->vertices;
 	firstPos = localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
-	while (currVertex != NULL) {
+	while (!List_IsEmpty(currVertex)) {
 		prevPos = localPointPos;
 		localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
 		currVertex = List_Tail(currVertex);
@@ -246,8 +243,7 @@ void _GR_DrawNetForce(Object *obj, Object *camera)
 
 void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 {
-	//TODO: Figure out how to optimize by minimizing floating point operations
-	//TODO: Block rendering seems somewhat unstable. Try using rotated basis instead
+	// TODO: Rewrite this by storing ship texture and updating on block change
 	int x, y, shipWidth, shipHeight;
 	Block *block;
 	List *holes;
@@ -310,7 +306,7 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	}
 
 	// Render holes (debug for now)
-	while (holes != NULL) {
+	while (!List_IsEmpty(holes)) {
 		hole = List_Head(holes);
 		Real2 holepos = hole->pos;
 		currBlock = (SDL_Rect) {

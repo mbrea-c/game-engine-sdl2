@@ -27,7 +27,7 @@ Object *GO_CreateObject(int type, char *name, double x, double y, double rot,
 	newObject->transform.rot = rot;
 	newObject->obj = obj;
 	newObject->parent = parent;
-	newObject->children = NULL;
+	newObject->children = List_Nil();
 	newObject->physics.enabled = 0;
 	newObject->collider.enabled = 0;
 	if (parent != NULL) {
@@ -40,11 +40,7 @@ void GO_AddChild(Object *parent, Object *child)
 {
 	GO_CheckObjNotNull(parent);
 	GO_CheckObjNotNull(child);
-	if (parent->children == NULL) {
-		parent->children = List_Create(child);
-	} else {
-		List_Append(parent->children, child);
-	}
+	List_Append(parent->children, child);
 }
 
 Object *GO_GetParent(Object *object)
@@ -59,15 +55,12 @@ Object *GO_GetChild(Object *object, char *name)
 
 	GO_CheckObjNotNull(object);
 	children = object->children;
-	// No children
-	if (children == NULL) {
-		return NULL;
-	}
+
 	// Search children by name
-	while (children->next != NULL) {
-		if (strcmp(((Object *) children->element)->name, name))
-			return (Object *) children->element;
-		children = children->next;
+	while (!List_HasTail(children)) {
+		if (strcmp(((Object *) List_Head(children))->name, name))
+			return (Object *) List_Head(children);
+		children = List_Tail(children);
 	}
 	// No entry found by name
 	return NULL;
@@ -236,12 +229,10 @@ void _GO_LogObjectTreeRec(Object *root, FILE *outfile, int depth)
 	fprintf(outfile, "|-%s\n", root->name);
 
 	// Recursively call on all children
-	if (children != NULL) {
-		while (children->next != NULL) {
-			_GO_LogObjectTreeRec(children->element, outfile, depth + 1);
-			children = children->next;
-		}
-		_GO_LogObjectTreeRec(children->element, outfile, depth + 1);
+	while (!List_IsEmpty(children)) {
+		_GO_LogObjectTreeRec(List_Head(children), outfile, depth + 1);
+		children = List_Tail(children);
+
 	}
 }
 
@@ -255,7 +246,7 @@ Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *p
 	shipObj->width = width;
 	shipObj->height = height;
 	shipObj->blocks = malloc(width * height * sizeof(Block));
-	shipObj->holes = NULL;
+	shipObj->holes = List_Nil();
 	Object *newShip = GO_CreateObject(OBJ_SHIP, name, x, y, rot, shipObj, parent);
 
 	for (j = 0; j < height; j++) {
@@ -373,11 +364,7 @@ void GO_ShipAddHole(Object *ship, Real2 damagePos)
 	hole->yBlock2 = damagePos.y - hy < hy + 1 - damagePos.y ? hy - 1 : hy + 1;
 
 	// Add hole info to ship hole list
-	if (shipObj->holes == NULL) {
-		shipObj->holes = List_Create(hole);
-	} else {
-		List_Append(shipObj->holes, hole);
-	}
+	List_Append(shipObj->holes, hole);
 }
 
 // Projectile procedures

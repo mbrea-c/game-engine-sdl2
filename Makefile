@@ -22,12 +22,12 @@ default: $(TARGET)
 all: default
 
 bin/%.o: src/%.c $(HEADERS)
-	$(CC) $(CFLAGS) $(LIBS) -c $< -o $@
+	$(CC) $(CFLAGS) $(LIBS) $(DEBUG_FLAGS) -c $< -o $@
 
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) $(CFLAGS) $(LIBS) -o $@
+	$(CC) $(OBJECTS) $(CFLAGS) $(LIBS) $(DEBUG_FLAGS) -o $@
 
 clean:
 	rm bin/*.o

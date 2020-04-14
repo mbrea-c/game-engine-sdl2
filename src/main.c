@@ -65,6 +65,8 @@ int main(int argc, char **argv)
 	// Main loop
 	GO_PushToTrail(trail, GO_PosToRootSpace(ship, ship->physics.centerOfMass));
 	GO_PushToTrail(bulittrail, GO_PosToRootSpace(bullet, PH_GetCenterOfMass(bullet)));
+
+	List_Print(root->children);
 	while (!quit) {
 		startTime = SDL_GetTicks();
 		while (SDL_PollEvent(&event)) {
@@ -89,10 +91,10 @@ int main(int argc, char **argv)
 		if (willUpdate || !stepByStep) {
 			PH_ApplyForce(ship, R2_ScalarMult(R2_Sub(GO_PosToRootSpace(camera, IN_GetMouseCameraPos()), ship->transform.pos), 50), (Real2) {0,0});
 			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
-			if (CD_MayCollide(ship, bullet)) {
-				printf("BOOM BAM CRASH BULLIT HIT!!!1!\n");
-				GO_ShipAddHole(ship, GO_PosToLocalSpace(ship, GO_PosToRootSpace(bullet, CD_PolygonGetFirstVertex(bullet))));
-			}
+			/*if (CD_MayCollide(ship, bullet)) {*/
+				/*printf("BOOM BAM CRASH BULLIT HIT!!!1!\n");*/
+				/*GO_ShipAddHole(ship, GO_PosToLocalSpace(ship, GO_PosToRootSpace(bullet, CD_PolygonGetFirstVertex(bullet))));*/
+			/*}*/
 			GO_PushToTrail(trail, GO_PosToRootSpace(ship, ship->physics.centerOfMass));
 			GO_PushToTrail(bulittrail, GO_PosToRootSpace(bullet, PH_GetCenterOfMass(bullet)));
 			GR_Render(root);
@@ -104,7 +106,7 @@ int main(int argc, char **argv)
 			SDL_Delay(TICKS_PER_FRAME - frameTime);
 		}
 
-		printf("FRAME TIME: %d\n", frameTime);
+		/*printf("FRAME TIME: %d\n", frameTime);*/
 	}
 	return 0;
 }

@@ -225,7 +225,7 @@ void PH_ApplyForce(Object *obj, Real2 force, Real2 localPos)
 		forceLog = malloc(sizeof(Force));
 		*forceLog = (Force) {obj, force, localPos};
 		if (PH_forcesLog == NULL) {
-			PH_forcesLog = List_Create(forceLog);
+			PH_forcesLog = List_Append(List_Nil(), forceLog);
 		} else {
 			List_Append(PH_forcesLog, forceLog);
 		}
@@ -245,7 +245,8 @@ void PH_ClearAllForces(Object *root)
 	_PH_ClearAllForcesRec(root);
 
 	// Clear forces log
-	while (PH_forcesLog != NULL) {
+	if (PH_forcesLog == NULL) PH_forcesLog = List_Nil();
+	while (!List_IsEmpty(PH_forcesLog)) {
 		next = List_Tail(PH_forcesLog);
 		free(List_Head(PH_forcesLog));
 		free(PH_forcesLog);
@@ -276,7 +277,7 @@ void _PH_ClearAllForcesRec(Object *root)
 	}
 
 	children = root->children;
-	while (children != NULL) {
+	while (!List_IsEmpty(children)) {
 		PH_ClearAllForces(List_Head(children));
 		children = List_Tail(children);
 	}
@@ -291,7 +292,7 @@ int _PH_GetDim(void *objects)
 	count = 0;
 	root = (Object *) objects;
 	children = root->children;
-	while (children != NULL) {
+	while (!List_IsEmpty(children)) {
 		count += FIELD_COUNT;
 		children = List_Tail(children);
 	}
@@ -345,7 +346,7 @@ void _PH_UpdateVals(void *objects)
 
 	root = (Object *) objects;
 	children = root->children;
-	while (children != NULL) {
+	while (!List_IsEmpty(children)) {
 		child = List_Head(children);
 		if (child->physics.enabled) {
 			child->physics.prevTransform = child->transform;

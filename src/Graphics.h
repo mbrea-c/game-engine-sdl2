@@ -9,6 +9,7 @@
 #include "Assets.h"
 #include "Polygon.h"
 #include "Real2.h"
+#include "List.h"
 
 // Screen dimension constants
 #define SCREEN_WIDTH  1280
