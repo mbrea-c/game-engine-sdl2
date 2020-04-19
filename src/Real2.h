@@ -27,6 +27,8 @@ double R2_Mag(Real2 u);
 double R2_AngleDeg(Real2 u);
 double R2_ProjectOn(Real2 u, Real2 projectionTarget);
 double R2_ProjectOnUnit(Real2 u, Real2 unitProjectionTarget);
+double R2_GetComponent(Real2 u, int axis);
+void R2_SetComponent(Real2 *u, double val, int axis); // Changes u in place
 Real2 R2_Norm(Real2 u);
 Real2 R2_RotateDeg(Real2 u, double angle);
 Real2 R2_RotateRad(Real2 u, double angle);

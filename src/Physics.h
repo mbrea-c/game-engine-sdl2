@@ -8,43 +8,47 @@
 #include "ODE_Euler.h"
 #include "Graphics.h"
 
+// Basic component methods
+Component *PH_CreatePhysicsZeroed();
+void PH_Mount(Component *physics);
+void PH_Destructor(void *physicsData);
 
 // Getters
-int PH_IsPhysicsEnabled(Object *obj);
-Real2 PH_GetLinearVelocity(Object *obj);
-double PH_GetLinearVelocityComponent(Object *obj, int component);
-Real2 PH_GetCenterOfMass(Object *obj);
-double PH_GetCenterOfMassComponent(Object *obj, int component);
-Real2 PH_GetForceAccum(Object *obj);
-double PH_GetForceAccumComponent(Object *obj, int component);
-double PH_GetTorqueAccum(Object *obj);
-double PH_GetAngularVelocity(Object *obj);
-double PH_GetMass(Object *obj);
-double PH_GetMomentOfInertia(Object *obj);
+Real2 PH_GetLinearVelocity(Component *physics);
+double PH_GetLinearVelocityComponent(Component *physics, int axis);
+Real2 PH_GetCenterOfMass(Component *physics);
+double PH_GetCenterOfMassComponent(Component *physics, int axis);
+Real2 PH_GetForceAccum(Component *physics);
+double PH_GetForceAccumComponent(Component *physics, int axis);
+double PH_GetTorqueAccum(Component *physics);
+double PH_GetAngularVelocity(Component *physics);
+double PH_GetMass(Component *physics);
+double PH_GetMomentOfInertia(Component *physics);
 
 // Setters
-void PH_SetPhysicsEnabled(Object *obj, int enabled);
-void PH_SetLinearVelocity(Object *obj, Real2 linearVel);
-void PH_SetCenterOfMass(Object *obj, Real2 centerOfMass);
-void PH_SetForceAccum(Object *obj, Real2 force);
-void PH_SetTorqueAccum(Object *obj, double torque);
-void PH_SetAngularVelocity(Object *obj, double angularVelocity);
-void PH_SetMass(Object *obj, double mass);
-void PH_SetMomentOfInertia(Object *obj, double momentOfInertia);
+void PH_SetLinearVelocity(Component *physics, Real2 linearVel);
+void PH_SetLinearVelocityComponent(Component *physics, double linearVel, int axis);
+void PH_SetCenterOfMass(Component *physics, Real2 centerOfMass);
+void PH_SetCenterOfMassComponent(Component *physics, double centerOfMass, int axis);
+void PH_SetForceAccum(Component *physics, Real2 force);
+void PH_SetForceAccumComponent(Component *physics, double forceAccum, int axis);
+void PH_SetTorqueAccum(Component *physics, double torque);
+void PH_SetAngularVelocity(Component *physics, double angularVelocity);
+void PH_SetMass(Component *physics, double mass);
+void PH_SetMomentOfInertia(Component *physics, double momentOfInertia);
 
-// Ship specific procedures
-void PH_UpdateShipMass(Object *ship); //Total mass
-void PH_UpdateShipCOM(Object *ship); //Center of mass
-void PH_UpdateShipMOI(Object *ship); //Moment of inertia
-void PH_UpdateShipPhysicsData(Object *ship); // Update mass, com and moi
 
 // General Object procedures
-void PH_ApplyForce(Object *obj, Real2 force, Real2 pos);
-void PH_ClearForces(Object *obj);
+void PH_ApplyForce(Component *physics, Real2 force, Real2 pos);
+void PH_ClearForces(Component *physics);
+//TODO: change this when keep track of physics objects is done 
 void PH_ClearAllForces(Object *root);
 List *PH_GetForcesLog(void);
 
 // Main updater
 void PH_UpdateObjectTree(Object *root, double deltaT);
+
+// Debug
+void PH_LogPhysicsData(Component *physics);
 
 #endif //PHYSICS_H

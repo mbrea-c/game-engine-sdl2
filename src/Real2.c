@@ -61,6 +61,30 @@ double R2_ProjectOnUnit(Real2 u, Real2 unitProjectionTarget)
 	return R2_Dot(u, unitProjectionTarget);
 }
 
+double R2_GetComponent(Real2 u, int axis)
+{
+	switch (axis) {
+		case R2_X:
+			return u.x;
+			break;
+		case R2_Y:
+			return u.y;
+			break;
+	}
+}
+
+void R2_SetComponent(Real2 *u, double val, int axis)
+{
+	switch (axis) {
+		case R2_X:
+			u->x = val;
+			break;
+		case R2_Y:
+			u->y = val;
+			break;
+	}
+}
+
 Real2 R2_Norm(Real2 u)
 {
 	double mag = R2_Mag(u);

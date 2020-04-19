@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define LOOP_OVER(list) for (; !List_IsEmpty(list); list = List_Tail(list))
+
 typedef struct List List;
 
 struct List {
@@ -31,6 +33,10 @@ void *List_GetFromIndex(List *list, int index);
 int List_HasTail(List *list);
 int List_IsEmpty(List *list);
 int List_GetLength(List *list);
+
+// List destructor
+// Does not destroy elements (has no knowledge how to)
+void List_Destructor(List *list);
 
 // Debug
 void List_Print(List *list);

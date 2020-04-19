@@ -1,10 +1,9 @@
 #include "GameObject.h"
-
-Object *gMainCamera = NULL;
+#include "Transform.h"
+#include "Debug.h"
 
 // Declare local procedures
 void _GO_LogObjectTreeRec(Object *root, FILE *outfile, int depth);
-void _GO_ShipInitBlock(Object *ship, int x, int y, Block block);
 
 void GO_CheckObjNotNull(Object *object)
 {
@@ -15,24 +14,20 @@ void GO_CheckObjNotNull(Object *object)
 }
 
 // General object procedures
-
-Object *GO_CreateObject(int type, char *name, double x, double y, double rot,
-		void *obj, Object *parent)
+Object *GO_CreateObject(char *name, double x, double y, double rot, Object *parent)
 {
+	static int id = 0;
 	Object *newObject = malloc(sizeof(Object));
-	newObject->type = type;
 	newObject->name = name;
-	newObject->transform.pos.x = x;
-	newObject->transform.pos.y = y;
-	newObject->transform.rot = rot;
-	newObject->obj = obj;
+	newObject->id = id++;
 	newObject->parent = parent;
 	newObject->children = List_Nil();
-	newObject->physics.enabled = 0;
-	newObject->collider.enabled = 0;
+	newObject->components = List_Nil();
 	if (parent != NULL) {
 		GO_AddChild(parent, newObject);
 	}
+	GO_AddComponent(newObject, TR_CreateTransform((Real2) {x,y}, rot));
+
 	return newObject;
 }
 
@@ -66,149 +61,6 @@ Object *GO_GetChild(Object *object, char *name)
 	return NULL;
 }
 
-Transform GO_GetRootTransform(Object *object)
-{
-	//TODO: Fix rotation (limit to range [0, 360) )
-	Object *current;
-	Transform finalTransform;
-
-	GO_CheckObjNotNull(object);
-	current = object;
-	finalTransform = current->transform;
-	while (current->parent != NULL) {
-		current = current->parent;
-		finalTransform.pos = R2_Add(R2_RotateDeg(finalTransform.pos, current->transform.rot), current->transform.pos);
-		finalTransform.rot = finalTransform.rot + current->transform.rot;
-	}
-	return finalTransform;
-}
-
-Transform GO_GetRelativeTransform_T(Transform *reference, Transform *target)
-{
-	//TODO: Fix rotation (limit to range [0, 360) )
-	Transform relativeTransform;
-	relativeTransform.pos.x = target->pos.x - reference->pos.x;
-	relativeTransform.pos.y = target->pos.y - reference->pos.y;
-	relativeTransform.pos = R2_RotateDeg(relativeTransform.pos, -reference->rot);
-	relativeTransform.rot = target->rot - reference->rot;
-	return relativeTransform;
-}
-
-Real2 GO_GetRootPositionFrom(Object *reference, Real2 localPos)
-{
-	Object *current;
-	Real2 rootPos;
-
-	GO_CheckObjNotNull(reference);
-	current = reference;
-	rootPos = localPos;
-	while (current->parent != NULL) {
-		rootPos = R2_Add(R2_RotateDeg(rootPos, current->transform.rot), current->transform.pos);
-		current = current->parent;
-	}
-	return rootPos;
-}
-
-Real2 GO_GetLocalPositionTo(Object *reference, Real2 globalPos)
-{
-	Real2 localPos;
-
-	localPos = R2_Sub(globalPos, reference->transform.pos);
-	localPos = R2_RotateDeg(localPos, -reference->transform.rot);
-	
-	return localPos;
-}
-
-Real2 GO_PosToParentSpace(Object *obj, Real2 localPos)
-{
-	return R2_Add(obj->transform.pos, R2_RotateDeg(localPos, obj->transform.rot));
-}
-
-Real2 GO_PosToRootSpace(Object *obj, Real2 localPos)
-{
-	while (obj->parent != NULL) {
-		localPos = GO_PosToParentSpace(obj, localPos);
-		obj = obj->parent;
-	}
-
-	return localPos;
-}
-
-Real2 GO_PosToLocalSpace(Object *obj, Real2 rootPos)
-{
-	rootPos = R2_Sub(rootPos, GO_PosToRootSpaceObj(obj));
-	rootPos = R2_RotateDeg(rootPos, -GO_RotToRootSpaceObj(obj));
-	return rootPos;
-}
-
-Real2 GO_PosToRootSpaceObj(Object *obj)
-{
-	return GO_PosToRootSpace(obj, (Real2) {0, 0});
-}
-
-double GO_RotToParentSpace(Object *obj, double localRot)
-{
-	return localRot + obj->transform.rot;
-}
-
-double GO_RotToRootSpace(Object *obj, double localRot)
-{
-	while (obj->parent != NULL) {
-		localRot = GO_RotToParentSpace(obj, localRot);
-		obj = obj->parent;
-	}
-
-	return localRot;
-}
-
-double GO_RotToLocalSpace(Object *obj, double rootRot)
-{
-	return rootRot - GO_RotToRootSpace(obj, obj->transform.rot);
-}
-
-double GO_RotToRootSpaceObj(Object *obj)
-{
-	return GO_RotToRootSpace(obj, 0);
-}
-
-Transform GO_TransformToParentSpace(Object *obj, Transform localTransform)
-{
-	localTransform.pos = GO_PosToParentSpace(obj, localTransform.pos);
-	localTransform.rot = GO_RotToParentSpace(obj, localTransform.rot);
-	return localTransform;
-}
-
-Transform GO_TransformToRootSpace(Object *obj, Transform localTransform)
-{
-	localTransform.pos = GO_PosToRootSpace(obj, localTransform.pos);
-	localTransform.rot = GO_RotToRootSpace(obj, localTransform.rot);
-	return localTransform;
-}
-
-Transform GO_TransformToLocalSpace(Object *obj, Transform rootTransform)
-{
-	rootTransform.pos = GO_PosToLocalSpace(obj, rootTransform.pos);
-	rootTransform.rot = GO_RotToLocalSpace(obj, rootTransform.rot);
-	return rootTransform;
-}
-
-Transform GO_TransformToRootSpaceObj(Object *obj)
-{
-	return GO_TransformToRootSpace(obj, (Transform) {(Real2) {0, 0}, 0});
-}
-
-// Gets position information relative to parent of given object
-Real2 GO_GetParentRelativePos(Object *object, Real2 pos)
-{
-	Real2 rotatedPos;
-
-	GO_CheckObjNotNull(object);
-	GO_CheckObjNotNull(object->parent);
-	rotatedPos = R2_RotateDeg(pos, object->transform.rot);
-
-	return R2_Add(object->transform.pos, rotatedPos);
-}
-
 void GO_LogObjectTree(Object *root, FILE *outfile)
 {
 	_GO_LogObjectTreeRec(root, outfile, 0);
@@ -236,234 +88,66 @@ void _GO_LogObjectTreeRec(Object *root, FILE *outfile, int depth)
 	}
 }
 
-// Ship procedures
-
-Object *GO_CreateEmptyShip(char *name, double x, double y, double rot, Object *parent, int width, int height)
+Object *GO_GetComponentOwner(Component *component)
 {
-	printf("DEBUG: Creating ship %s\n", name);
-	int i, j;
-	Ship *shipObj = malloc(sizeof(Ship));
-	shipObj->width = width;
-	shipObj->height = height;
-	shipObj->blocks = malloc(width * height * sizeof(Block));
-	shipObj->holes = List_Nil();
-	Object *newShip = GO_CreateObject(OBJ_SHIP, name, x, y, rot, shipObj, parent);
+	return component->owner;
+}
 
-	for (j = 0; j < height; j++) {
-		for (i = 0; i < width; i++) {
-			_GO_ShipInitBlock(newShip, i, j, GO_CreateUnwalledBlock(BLOCK_EMPTY));
+Component *GO_GetComponent(Object *obj, int componentType)
+{
+	Component *targetCompnent = NULL;
+	Component *currentComponent = NULL;
+	List *clist = obj->components;
+	for (; !List_IsEmpty(clist); clist = List_Tail(clist)) {
+		currentComponent = List_Head(clist);
+		if (componentType == currentComponent->type) {
+			targetCompnent = currentComponent;
 		}
 	}
-
-	// Initialize physics information
-	newShip->physics.enabled = 1;
-	newShip->physics.angularVel = 0;
-	newShip->physics.linearVel = (Real2) { 0, 0 };
-	PH_UpdateShipPhysicsData(newShip);
-
-	// Initialize collider
-	newShip->collider.enabled = 1;
-	newShip->collider.type = COLL_POLYGON;
-	CD_GenerateShipCollider(newShip);
-
-	printf("DEBUG: Created ship %s\n", name);
-	return newShip;
+	return targetCompnent;
 }
 
-Block *GO_ShipGetBlock(Object *ship, int x, int y)
+Component *GO_GetComponentFromOwner(Component *comp, int componentType)
 {
-	GO_CheckObjNotNull(ship);
-	int width, height;
-	width = ((Ship *) ship->obj)->width;
-	height = ((Ship *) ship->obj)->height;
-	Block *blocks = ((Ship *) ship->obj)->blocks; 
-	if (x < 0 || x >= width) {
-		fprintf(stderr, "GO_ShipGetBlock: Array x coordinate out of bounds!\n");
-		exit(1);
-	} else if (y < 0 || y >= height) {
-		fprintf(stderr, "GO_ShipGetBlock: Array y coordinate out of bounds!\n");
-		exit(1);
+	GO_GetComponent(GO_GetComponentOwner(comp), componentType);
+}
+
+int GO_HasComponent(Object *obj, int componentType)
+{
+	List *clist = obj->components;
+	for (; !List_IsEmpty(clist); clist = List_Tail(clist)) {
+		if (componentType == ((Component *)List_Head(clist))->type) {
+			return 1;
+		}
 	}
-	return (blocks + y * width + x);
+	return 0;
 }
 
-void _GO_ShipInitBlock(Object *ship, int x, int y, Block block)
+void GO_AddComponent(Object *obj, Component *component)
 {
-	*(GO_ShipGetBlock(ship, x, y)) = block;
-}
+	int matchedRequirements = 1;
+	List *dependencies = component->dependencies;
 
-void GO_ShipSetBlock(Object *ship, int x, int y, Block block)
-{
-	_GO_ShipInitBlock(ship, x, y, block);
-	PH_UpdateShipPhysicsData(ship);
-	CD_GenerateShipCollider(ship);
-}
-
-int GO_ShipGetHeight(Object *ship)
-{
-	return ((Ship *) ship->obj)->height;
-}
-
-int GO_ShipGetWidth(Object *ship)
-{
-	return ((Ship *) ship->obj)->width;
-}
-
-void GO_ShipSetBlockWall(Object *ship, int x, int y, int wall, int wallType)
-{
-	GO_ShipGetBlock(ship, x, y)->walls[wall] = gWallTypes[wallType];
-}
-
-void GO_ShipCloseWithWalls(Object *ship, int wallType)
-{
-	int width, height, x, y;
-	Block *block;
-
-	width = GO_ShipGetWidth(ship);
-	height = GO_ShipGetHeight(ship);
-
-	for (x = 0; x < width; x++) {
-		for (y = 0; y < height; y++) {
-			block = GO_ShipGetBlock(ship, x, y);	
-			if (block->type != BLOCK_EMPTY) {
-				if (x <= 0 || GO_ShipGetBlock(ship, x-1, y)->type == BLOCK_EMPTY) {
-					block->walls[LEFT_WALL] = gWallTypes[wallType];
-				}
-				if (y <= 0 || GO_ShipGetBlock(ship, x, y-1)->type == BLOCK_EMPTY) {
-					block->walls[TOP_WALL] = gWallTypes[wallType];
-				}
-				if (x >= width - 1 || GO_ShipGetBlock(ship, x+1, y)->type == BLOCK_EMPTY) {
-					block->walls[RIGHT_WALL] = gWallTypes[wallType];
-				}
-				if (y >= height - 1 || GO_ShipGetBlock(ship, x, y+1)->type == BLOCK_EMPTY) {
-					block->walls[BOTTOM_WALL] = gWallTypes[wallType];
-				}
+	// Component is already present?
+	if (GO_HasComponent(obj, component->type)) {
+		matchedRequirements = 0;
+	} else { // Are dependencies satisfied?
+		LOOP_OVER(dependencies) {
+			if (!GO_HasComponent(obj, *(int *)List_Head(dependencies))) {
+				matchedRequirements = 0;
+				break;
 			}
 		}
 	}
-}
 
-void GO_ShipAddHole(Object *ship, Real2 damagePos)
-{
-	ShipHole *hole;
-	Ship *shipObj;
-	int hx, hy;
-
-	shipObj = (Ship *) ship->obj;
-	hx = (int) damagePos.x;
-	hy = (int) damagePos.y;
-
-	hole = malloc(sizeof(ShipHole));
-	hole->pos = damagePos;
-	// Find two closest block to damage position
-	// block it lies on
-	hole->xBlock1 = hx;
-	hole->yBlock1 = hy;
-	// second closest block
-	hole->xBlock2 = damagePos.x - hx < hx + 1 - damagePos.x ? hx - 1 : hx + 1;
-	hole->yBlock2 = damagePos.y - hy < hy + 1 - damagePos.y ? hy - 1 : hy + 1;
-
-	// Add hole info to ship hole list
-	List_Append(shipObj->holes, hole);
-}
-
-// Projectile procedures
-
-Object *GO_CreateProjectile(char *name, double x, double y, Object *parent, int projectileType, double size)
-{
-	Object *projObj;
-	Projectile *proj = malloc(sizeof(Projectile));
-
-	proj->projectileType = gProjectileTypes[projectileType];
-	proj->size = size;
-	projObj = GO_CreateObject(OBJ_PROJECTILE, name, x, y, 0, proj, parent);
-
-	// Initialize physics
-	PH_SetPhysicsEnabled(projObj, 1);
-	PH_SetLinearVelocity(projObj, (Real2) {0, 0});
-	PH_SetAngularVelocity(projObj, 0);
-	PH_SetCenterOfMass(projObj, (Real2) {size/2, size/2});
-	PH_SetMass(projObj, gProjectileTypes[projectileType]->mass);
-	PH_SetMomentOfInertia(projObj, size * size * gProjectileTypes[projectileType]->mass / 2);
-
-	// Initialize collider
-	projObj->collider.enabled = 1;
-	projObj->collider.type = COLL_POLYGON;
-	CD_GenerateProjectileCollider(projObj);
-
-	return projObj;
-}
-
-// Block procedures
-
-Block GO_CreateUnwalledBlock(int type)
-{
-	int k;
-	Block newBlock;
-	newBlock.type = type;
-	newBlock.material = gMaterials[type];
-	for (k = 0; k < 4; k++) {
-		newBlock.walls[k] = gWallTypes[WALL_EMPTY];
-	}
-	return newBlock;
-}
-
-// Camera procedures
-
-Object *GO_CreateCamera(double x, double y, char *name, Object *parent, double width)
-{
-	Camera *cameraObj = malloc(sizeof(Camera));
-	cameraObj->width = width;
-	
-	Object *newCamera = GO_CreateObject(OBJ_CAMERA, name, x, y, 0, cameraObj, parent);
-	GO_SetCamera(newCamera);
-	return newCamera;
-}
-
-void GO_SetCamera(Object *camera)
-{
-	if (gMainCamera != NULL) {
-		fprintf(stderr, "2 cameras 5 me\n");
-		exit(1);
-	}
-	gMainCamera = camera;
-}
-
-Object *GO_GetCamera(void)
-{
-	if (gMainCamera == NULL) {
-		fprintf(stderr, "NO CAMERA REEEEEEEE. WILL COMMIT NOT ALIVE.\n");
-		exit(1);
-	}
-	return gMainCamera;
-
-}
-
-// Trail procedures
-
-Object *GO_CreateTrail(char *name, Object *parent, int length, int r, int g, int b, int a)
-{
-	Trail *trailObj = malloc(sizeof(Trail));
-	trailObj->length = length;
-	trailObj->points = calloc(length, sizeof(Real2));
-	trailObj->next = 0;
-	trailObj->color = (RGBA) { r, g, b, a };
-	trailObj->_initialized = 0;
-	Object *newTrail = GO_CreateObject(OBJ_TRAIL, name, 0, 0, 0, trailObj, parent);
-	return newTrail;
-}
-
-void GO_PushToTrail(Object *trail, Real2 globalPoint)
-{
-	Trail *trailObj = (Trail *) trail->obj;
-	if (!trailObj->_initialized) {
-		int i;
-		for (i = 0; i < trailObj->length; i++) {
-			trailObj->points[i] = globalPoint;
-		}
-		trailObj->_initialized = 1;
+	// Mount component or fail and die
+	if (matchedRequirements) {
+		component->owner = obj;
+		List_Append(obj->components, component);
+		(component->mount)(component);
 	} else {
-		trailObj->points[trailObj->next] = globalPoint;
-		trailObj->next = (trailObj->next + 1) % trailObj->length;
+		fprintf(stderr, "Error when adding component of type %d to %s\n", component->type, obj->name);
+		exit(1);
 	}
 }
+

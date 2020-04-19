@@ -3,6 +3,6 @@
 
 #include "Graphics.h"
 
-Real2 IN_GetMouseCameraPos(void);
+Real2 IN_GetMouseCameraPos();
 
 #endif //INPUT_H

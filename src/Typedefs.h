@@ -35,12 +35,14 @@ enum WallPos {
 	BOTTOM_WALL
 };
 
-enum ObjectTypes {
-	OBJ_WORLD_NODE,
-	OBJ_SHIP, 
-	OBJ_CAMERA,
-	OBJ_TRAIL,
-	OBJ_PROJECTILE
+enum ComponentTypes {
+	COMP_SHIP, 
+	COMP_CAMERA,
+	COMP_TRAIL,
+	COMP_PROJECTILE,
+	COMP_TRANSFORM,
+	COMP_PHYSICS,
+	COMP_COLLIDER,
 };
 
 enum ColliderTypes {
@@ -49,15 +51,18 @@ enum ColliderTypes {
 
 // forward declarations 
 // allow types to contain pointers to themselves
-typedef struct Camera Camera;
-typedef struct Transform Transform;
+typedef struct Component Component;
+// Componnent data types
+typedef struct TransformData TransformData;
+typedef struct ShipData ShipData;
+typedef struct PhysicsData PhysicsData;
+typedef struct ColliderData ColliderData;
+typedef struct ProjectileData ProjectileData;
+typedef struct TrailData TrailData;
+typedef struct CameraData CameraData;
+
 typedef struct Object Object;
-typedef struct Ship Ship;
-typedef struct Projectile Projectile;
-typedef struct Trail Trail;
 typedef struct Block Block;
-typedef struct Physics Physics;
-typedef struct Collider Collider;
 typedef struct Material Material;
 typedef struct WallType WallType;
 typedef struct ProjectileType ProjectileType;
@@ -73,57 +78,60 @@ struct RGBA {
 };
 
 struct Force {
-	Object *obj;
+	Component *physics;
 	Real2 force;
 	Real2 localPos;
 };
 
-struct Transform {
+struct TransformData {
 	Real2 pos;
 	double rot;
 };
 
-struct Physics {
-	// Constants
-	int enabled;
+struct PhysicsData {
+	// General
 	double mass;
 	double momentOfInertia;
-	// Accumulators
-	Real2 forceAccum;
-	double torqueAccum;
-	// Mutable data
 	Real2 linearVel;
 	double angularVel;
 	Real2 centerOfMass;
-	// Helper for physics updaters
+	// Needed for physics updaters
 	Real2 nextLinearVel;
 	double nextAngularVel;
 	double nextRot;
 	Real2 nextCenterOfMass;
-	// Old transform for collisions
-	Transform prevTransform;
+	// Accumulators
+	Real2 forceAccum;
+	double torqueAccum;
+	// Old transform data for collisions
+	Real2 prevPos;
+	double prevRot;
 };
 
-struct Collider {
-	int enabled;
+struct ColliderData {
 	int type;
 	void *collider;
 };
 
-struct Camera {
+struct CameraData {
 	double width;
 };
 
-//TODO: Initialize object collider to disabled by default. Shit gon break
 struct Object {
-	int type; // ObjectTypes
 	char *name;
-	Transform transform;
-	Physics physics;
-	Collider collider;
-	void *obj;
+	int id;
 	Object *parent;
 	List *children;
+	List *components;
+};
+
+struct Component {
+	int type;
+	Object *owner;
+	void *componentData;
+	void (*destructor)(void *);
+	void (*mount)(Component *);
+	List *dependencies;
 };
 
 struct Block {
@@ -137,14 +145,14 @@ struct ShipHole {
 	int xBlock1, yBlock1, xBlock2, yBlock2;
 };
 
-struct Ship {
+struct ShipData {
 	int width;
 	int height;
 	Block *blocks;
 	List *holes;
 };
 
-struct Projectile {
+struct ProjectileData {
 	ProjectileType *projectileType;
 	double size;
 };
@@ -155,12 +163,11 @@ struct ProjectileType {
 	double mass;
 };
 
-struct Trail {
+struct TrailData {
 	int length;
 	int next;
 	Real2 *points;
 	RGBA color;
-	int _initialized;
 };
 
 struct WallType {

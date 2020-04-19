@@ -5,8 +5,8 @@ Real2 IN_GetMouseCameraPos(void)
 	double xPixelsPerUnit, yPixelsPerUnit;
 	int x, y;
 	
-	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(GO_GetCamera());
-	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(GO_GetCamera());
+	xPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraHeight();
+	yPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight();
 
 	SDL_GetMouseState(&x, &y);
 

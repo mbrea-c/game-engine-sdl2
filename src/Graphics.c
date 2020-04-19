@@ -1,32 +1,40 @@
 #include "Graphics.h"
+#include "Transform.h"
+#include "Collider.h"
+#include "Trail.h"
+#include "Projectile.h"
+#include "Ship.h"
+#include "Camera.h"
 
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
+Object *gCamera;
 double gYPixelsPerUnit = 0;
 double gXPixelsPerUnit = 0;
 
 // Local procedure declarations
-void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform);
-void _GR_RenderTrail(Object *trail, Object *camera);
-void _GR_RenderPolygonCollider(Object *obj, Object *camera);
-void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform);
+void _GR_RenderShip(Object *ship, Real2 relativePos, double relativeRot);
+void _GR_RenderTrail(Object *trail);
+void _GR_RenderPolygonCollider(Object *obj);
+void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot);
 void _GR_RenderRec(Object *root);
-void _GR_DrawLine(Object *camera, Real2 start, Real2 end, int r, int g, int b, int a);
-void _GR_DrawNetForce(Object *obj, Object *camera);
+void _GR_DrawLine(Real2 start, Real2 end, int r, int g, int b, int a);
+void _GR_DrawNetForce(Object *obj);
 void _GR_SetUpRenderingGlobals(void);
 
 void _GR_SetUpRenderingGlobals(void)
 {
 	Object *camera;
 
-	camera = GO_GetCamera();
+	camera = gCamera;
 	gXPixelsPerUnit = SCREEN_WIDTH / GR_GetCameraWidth(camera);
 	gYPixelsPerUnit = SCREEN_HEIGHT / GR_GetCameraHeight(camera);
 }
 
-void GR_Init(void)
+void GR_Init(Object *camera)
 {
+	gCamera = camera;
 	// Initialize SDL
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		fprintf(stderr, "SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
@@ -73,9 +81,9 @@ void GR_Render(Object *root)
 	if (DRAW_FORCES) {
 		List *forcesLog = PH_GetForcesLog();
 		Force force;
-		while (!List_IsEmpty(forcesLog)) {
+		while (forcesLog != NULL && !List_IsEmpty(forcesLog)) {
 			force = *(Force *)List_Head(forcesLog);
-			GR_DrawForce(force.obj, GO_GetCamera(), force.force, force.localPos);
+			GR_DrawForce(GO_GetComponentOwner(force.physics), force.force, force.localPos);
 			forcesLog = List_Tail(forcesLog);
 		}
 	}
@@ -85,9 +93,10 @@ void GR_Render(Object *root)
 void _GR_RenderRec(Object *root)
 {
 	int xWithinRange, yWithinRange;
-	Object *camera = GO_GetCamera();
+	Component *cameraTransform, *rootTransform, *rootCollider;
 	List *children;
-	Transform relativeTransform;
+	Real2  relativePos;
+	double relativeRot;
 
 
 	if (root == NULL) {
@@ -95,31 +104,32 @@ void _GR_RenderRec(Object *root)
 		exit(1);
 	}
 	children = root->children;
+	cameraTransform = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	rootTransform   = GO_GetComponent(root,    COMP_TRANSFORM);
+	rootCollider    = GO_GetComponent(root,    COMP_COLLIDER);
 	
 	// Get global positions and check if object is in camera view
-	relativeTransform  = GO_TransformToLocalSpace(camera, GO_TransformToRootSpaceObj(root));
+	relativePos  = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpaceObj(rootTransform));
+	relativeRot  = TR_RotToLocalSpace(cameraTransform, TR_RotToRootSpaceObj(rootTransform));
 
-	xWithinRange = relativeTransform.pos.x >= 0 && relativeTransform.pos.x <= GR_GetCameraWidth(camera);
-	yWithinRange = relativeTransform.pos.y >= 0 && relativeTransform.pos.y <= GR_GetCameraHeight(camera);
+	xWithinRange = relativePos.x >= 0 && relativePos.x <= GR_GetCameraWidth();
+	yWithinRange = relativePos.y >= 0 && relativePos.y <= GR_GetCameraHeight();
 	
 	// Render if in view
 	if (xWithinRange && yWithinRange) {
-		switch (root->type) {
-			case OBJ_SHIP:
-				_GR_RenderShip(root, camera, relativeTransform);
-				break;
-			case OBJ_TRAIL:
-				_GR_RenderTrail(root, camera);
-				break;
-			case OBJ_PROJECTILE:
-				_GR_RenderProjectile(root, camera, relativeTransform);
-				break;
+		if (GO_HasComponent(root, COMP_SHIP)) {
+			_GR_RenderShip(root, relativePos, relativeRot);
+		} else if (GO_HasComponent(root, COMP_TRAIL)) {
+			_GR_RenderTrail(root);
+		} else if (GO_HasComponent(root, COMP_PROJECTILE)) {
+			_GR_RenderProjectile(root, relativePos, relativeRot);
 		}
-		if (root->collider.enabled && root->collider.type == COLL_POLYGON && DRAW_COLLIDERS) {
-			_GR_RenderPolygonCollider(root, camera);
+
+		if (rootCollider != NULL && CD_GetType(rootCollider) == COLL_POLYGON && DRAW_COLLIDERS) {
+			_GR_RenderPolygonCollider(root);
 		}
-		if (PH_IsPhysicsEnabled(root) && DRAW_FORCES) {
-			_GR_DrawNetForce(root, camera);
+		if (GO_HasComponent(root, COMP_PHYSICS) && DRAW_FORCES) {
+			_GR_DrawNetForce(root);
 		}
 	}
 
@@ -131,21 +141,22 @@ void _GR_RenderRec(Object *root)
 	}
 }
 
-void _GR_RenderTrail(Object *trail, Object *camera)
+void _GR_RenderTrail(Object *trail)
 {
 	int count, i, length;
-	Trail *trailObj;
+	Component *trailComponent, *cameraTransform;
 	Real2 localPointPos, prevPos;
 	RGBA color;
 
-	trailObj = (Trail *) trail->obj;
-	color = trailObj->color;
-	length = trailObj->length;
-	i = trailObj->next;
-	localPointPos = GO_PosToLocalSpace(camera, trailObj->points[i]);
+	trailComponent  = GO_GetComponent(trail, COMP_TRAIL);
+	cameraTransform = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	color = TL_GetColor(trailComponent);
+	length = TL_GetLength(trailComponent);
+	i = TL_GetNext(trailComponent);
+	localPointPos = TR_PosToLocalSpace(cameraTransform, TL_GetPoint(trailComponent, i));
 	for (count = 0; count < length; i = (i + 1) % length, count++) {
 		prevPos = localPointPos;
-		localPointPos = GO_PosToLocalSpace(camera, trailObj->points[i]);
+		localPointPos = TR_PosToLocalSpace(cameraTransform, TL_GetPoint(trailComponent, i));
 		SDL_SetRenderDrawColor(gRenderer, color.r, color.g, color.b, color.a);
 		SDL_RenderDrawLine(
 				gRenderer, (int) (prevPos.x * gXPixelsPerUnit),
@@ -156,37 +167,41 @@ void _GR_RenderTrail(Object *trail, Object *camera)
 	}
 }
 
-void _GR_RenderProjectile(Object *obj, Object *camera, Transform relativeTransform)
+void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot)
 {
 	double size;
 	SDL_Point centerOfRotation;
 	SDL_Rect currBlock;
-	Projectile *proj;
+	Component *projectileComponent, *projectilePhysics;
 	
-	proj = (Projectile *)obj->obj;
-	size = proj->size;
+	projectileComponent = GO_GetComponent(obj, COMP_PROJECTILE);
+	projectilePhysics   = GO_GetComponent(obj, COMP_PHYSICS);
+	size = PR_GetSize(projectileComponent);
 	centerOfRotation = (SDL_Point) { gXPixelsPerUnit * size/2, gYPixelsPerUnit * size/2 };
 	currBlock = (SDL_Rect) {
-		(int) (relativeTransform.pos.x * gXPixelsPerUnit),
-		(int) (relativeTransform.pos.y * gYPixelsPerUnit),
-		(int) ceil(gXPixelsPerUnit * proj->size),
-		(int) ceil(gYPixelsPerUnit * proj->size),
+		(int) (relativePos.x * gXPixelsPerUnit),
+		(int) (relativePos.y * gYPixelsPerUnit),
+		(int) ceil(gXPixelsPerUnit * size),
+		(int) ceil(gYPixelsPerUnit * size),
 	};
 
-	LT_RenderRect(proj->projectileType->texture, &currBlock, NULL, -R2_AngleDeg(obj->physics.linearVel), &centerOfRotation, SDL_FLIP_NONE);
-	_GR_RenderPolygonCollider(obj, camera);
+	LT_RenderRect(PR_GetTexture(projectileComponent), &currBlock, NULL, -R2_AngleDeg(PH_GetLinearVelocity(projectilePhysics)), &centerOfRotation, SDL_FLIP_NONE);
 }
 
-void _GR_RenderPolygonCollider(Object *obj, Object *camera)
+void _GR_RenderPolygonCollider(Object *obj)
 {
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
+	Component *colliderComponent, *cameraTransform, *objTransform;
 
-	currVertex = ((Polygon *) obj->collider.collider)->vertices;
-	firstPos = localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
+	colliderComponent = GO_GetComponent(obj, COMP_COLLIDER);
+	cameraTransform   = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	objTransform      = GO_GetComponent(obj, COMP_TRANSFORM);
+	currVertex = ((Polygon *)CD_GetCollider(colliderComponent))->vertices;
+	firstPos = localPointPos = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpace(objTransform, *((Real2 *)List_Head(currVertex))));
 	while (!List_IsEmpty(currVertex)) {
 		prevPos = localPointPos;
-		localPointPos = GO_PosToLocalSpace(camera, GO_PosToRootSpace(obj, *((Real2 *)List_Head(currVertex))));
+		localPointPos = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpace(objTransform, *((Real2 *)List_Head(currVertex))));
 		currVertex = List_Tail(currVertex);
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
 		SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
@@ -211,10 +226,13 @@ void _GR_RenderPolygonCollider(Object *obj, Object *camera)
 			);
 }
 
-void _GR_DrawLine(Object *camera, Real2 start, Real2 end, int r, int g, int b, int a)
+void _GR_DrawLine(Real2 start, Real2 end, int r, int g, int b, int a)
 {
-	start = GO_PosToLocalSpace(camera, start);
-	end = GO_PosToLocalSpace(camera, end);
+	Component *cameraTransform;
+
+	cameraTransform = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	start = TR_PosToLocalSpace(cameraTransform, start);
+	end = TR_PosToLocalSpace(cameraTransform, end);
 
 	SDL_SetRenderDrawColor(gRenderer, r, g, b, a);
 	SDL_RenderDrawLine(
@@ -226,25 +244,31 @@ void _GR_DrawLine(Object *camera, Real2 start, Real2 end, int r, int g, int b, i
 			);
 }
 
-void GR_DrawForce(Object *obj, Object *camera, Real2 force, Real2 localPos)
+void GR_DrawForce(Object *obj, Real2 force, Real2 localPos)
 {
+	Component *objTransform;
+
+	objTransform = GO_GetComponent(obj, COMP_TRANSFORM);
 	_GR_DrawLine(
-		camera,
-		GO_PosToRootSpace(obj, localPos),
-		R2_Add(GO_PosToRootSpace(obj, localPos), R2_ScalarMult(force, 1.0/50)),
+		TR_PosToRootSpace(objTransform, localPos),
+		R2_Add(TR_PosToRootSpace(objTransform, localPos), R2_ScalarMult(force, 1.0/50)),
 		0, 0, 255, 255
 		);
 }
 
-void _GR_DrawNetForce(Object *obj, Object *camera)
+void _GR_DrawNetForce(Object *obj)
 {
-	GR_DrawForce(obj, camera, PH_GetForceAccum(obj), PH_GetCenterOfMass(obj));
+	Component *objPhysics;
+
+	objPhysics = GO_GetComponent(obj, COMP_PHYSICS);
+	GR_DrawForce(obj, PH_GetForceAccum(objPhysics), PH_GetCenterOfMass(objPhysics));
 }
 
-void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
+void _GR_RenderShip(Object *ship, Real2 relativePos, double relativeRot)
 {
 	// TODO: Rewrite this by storing ship texture and updating on block change
 	int x, y, shipWidth, shipHeight;
+	Component *shipComponent, *shipPhysics;
 	Block *block;
 	List *holes;
 	ShipHole *hole;
@@ -253,46 +277,48 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	Real2 rotatedBlockPos;
 	Real2 rotatedBasisX, rotatedBasisY;
 	
-	holes = ((Ship *) ship->obj)->holes;
+	shipComponent = GO_GetComponent(ship, COMP_SHIP);
+	shipPhysics   = GO_GetComponent(ship, COMP_PHYSICS);
+	holes = SH_GetHoles(shipComponent);
 	centerOfRotation = (SDL_Point) { 0, 0 };
-	shipWidth = ((Ship *) ship->obj)->width;
-	shipHeight = ((Ship *) ship->obj)->height;
-	rotatedBasisX = R2_RotateDeg((Real2) {gXPixelsPerUnit, 0}, relativeTransform.rot);
-	rotatedBasisY = R2_RotateDeg((Real2) {0, gYPixelsPerUnit}, relativeTransform.rot);
+	shipWidth = SH_GetWidth(shipComponent);
+	shipHeight = SH_GetHeight(shipComponent);
+	rotatedBasisX = R2_RotateDeg((Real2) {gXPixelsPerUnit, 0}, relativeRot);
+	rotatedBasisY = R2_RotateDeg((Real2) {0, gYPixelsPerUnit}, relativeRot);
 
 	for (y = 0; y < shipHeight; y++) {
 		for (x = 0; x < shipWidth; x++) {
-			block = GO_ShipGetBlock(ship, x, y);
-			rotatedBlockPos = R2_RotateDeg((Real2) { x, y }, relativeTransform.rot);
+			block = SH_GetBlock(shipComponent, x, y);
+			rotatedBlockPos = R2_RotateDeg((Real2) { x, y }, relativeRot);
 			currBlock = (SDL_Rect) {
-				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * gXPixelsPerUnit),
-				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * gYPixelsPerUnit),
+				(int) ((relativePos.x + rotatedBlockPos.x) * gXPixelsPerUnit),
+				(int) ((relativePos.y + rotatedBlockPos.y) * gYPixelsPerUnit),
 				(int) ceil(gXPixelsPerUnit),
 				(int) ceil(gYPixelsPerUnit),
 			};
 			switch (block->type) {
 				case BLOCK_TEST:
-					LT_RenderRect(block->material->texture, &currBlock, NULL, relativeTransform.rot, &centerOfRotation, SDL_FLIP_NONE);
+					LT_RenderRect(block->material->texture, &currBlock, NULL, relativeRot, &centerOfRotation, SDL_FLIP_NONE);
 					// Draw walls
 					// Left
 					LT_RenderStretch(
 							block->walls[0]->texture, currBlock.x, currBlock.y, currBlock.w,
-							currBlock.h, NULL, relativeTransform.rot, &centerOfRotation,
+							currBlock.h, NULL, relativeRot, &centerOfRotation,
 							SDL_FLIP_NONE);
 					//Top
 					LT_RenderStretch(
 							block->walls[1]->texture, currBlock.x + rotatedBasisX.x, currBlock.y + rotatedBasisX.y, currBlock.w,
-							currBlock.h, NULL, relativeTransform.rot + 90, &centerOfRotation,
+							currBlock.h, NULL, relativeRot + 90, &centerOfRotation,
 							SDL_FLIP_NONE);
 					//Right
 					LT_RenderStretch(
 							block->walls[2]->texture, currBlock.x + rotatedBasisX.x + rotatedBasisY.x, currBlock.y + rotatedBasisX.y + rotatedBasisY.y, currBlock.w,
-							currBlock.h, NULL, relativeTransform.rot + 180, &centerOfRotation,
+							currBlock.h, NULL, relativeRot + 180, &centerOfRotation,
 							SDL_FLIP_NONE);
 					//Bottom
 					LT_RenderStretch(
 							block->walls[3]->texture, currBlock.x + rotatedBasisY.x, currBlock.y + rotatedBasisY.y, currBlock.w,
-							currBlock.h, NULL, relativeTransform.rot + 270, &centerOfRotation,
+							currBlock.h, NULL, relativeRot + 270, &centerOfRotation,
 							SDL_FLIP_NONE);
 					break;
 				case BLOCK_EMPTY:
@@ -310,8 +336,8 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 		hole = List_Head(holes);
 		Real2 holepos = hole->pos;
 		currBlock = (SDL_Rect) {
-			(int) ((relativeTransform.pos.x + R2_RotateDeg(holepos, relativeTransform.rot).x) * gXPixelsPerUnit) -4,
-			(int) ((relativeTransform.pos.y + R2_RotateDeg(holepos, relativeTransform.rot).y) * gYPixelsPerUnit) -4,
+			(int) ((relativePos.x + R2_RotateDeg(holepos, relativeRot).x) * gXPixelsPerUnit) -4,
+			(int) ((relativePos.y + R2_RotateDeg(holepos, relativeRot).y) * gYPixelsPerUnit) -4,
 			8,
 			8,
 		};
@@ -321,30 +347,30 @@ void _GR_RenderShip(Object *ship, Object *camera, Transform relativeTransform)
 	}
 
 	//TODO: DEBUG UGLY STUFF. DELETE OR FIX vvvvvvvvvv
-	rotatedBlockPos = R2_RotateDeg(ship->physics.centerOfMass, relativeTransform.rot);
+	rotatedBlockPos = R2_RotateDeg(PH_GetCenterOfMass(shipPhysics), relativeRot);
 	currBlock = (SDL_Rect) {
-				(int) ((relativeTransform.pos.x + rotatedBlockPos.x) * gXPixelsPerUnit) -2,
-				(int) ((relativeTransform.pos.y + rotatedBlockPos.y) * gYPixelsPerUnit) -2,
+				(int) ((relativePos.x + rotatedBlockPos.x) * gXPixelsPerUnit) -2,
+				(int) ((relativePos.y + rotatedBlockPos.y) * gYPixelsPerUnit) -2,
 				4,
 				4,
 	};
 
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
 	SDL_RenderDrawRect(gRenderer, &currBlock);
-	SDL_RenderDrawLine(gRenderer, currBlock.x, currBlock.y, (int) (relativeTransform.pos.x * gXPixelsPerUnit),
-		(int) (relativeTransform.pos.y * gYPixelsPerUnit));
+	SDL_RenderDrawLine(gRenderer, currBlock.x, currBlock.y, (int) (relativePos.x * gXPixelsPerUnit),
+		(int) (relativePos.y * gYPixelsPerUnit));
 
 	//END_DEBUG^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 }
 
-double GR_GetCameraWidth(Object *camera)
+double GR_GetCameraWidth()
 {
-	return ((Camera *) camera->obj)->width;
+	return CA_GetWidth(GO_GetComponent(gCamera, COMP_CAMERA));
 }
 
-double GR_GetCameraHeight(Object *camera)
+double GR_GetCameraHeight()
 {
-	return GR_GetCameraWidth(camera) * (double) SCREEN_HEIGHT / (double) SCREEN_WIDTH;
+	return GR_GetCameraWidth() * (double) SCREEN_HEIGHT / (double) SCREEN_WIDTH;
 }
 
 SDL_Renderer *GR_GetMainRenderer(void)

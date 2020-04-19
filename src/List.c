@@ -15,7 +15,11 @@ void List_CheckNotNull(List *list)
 
 List *List_Create(void *elem)
 {
-	List *list = malloc(sizeof(List));
+	List *list; 
+	if ((list = malloc(sizeof(List))) == NULL) {
+		fprintf(stderr, "Allocation error\n");
+		exit(1);
+	}
 	list->element = elem;
 	list->next = NULL;
 	list->_isNil = 0;
@@ -196,6 +200,18 @@ int List_GetLength(List *list)
 		length++;
 	}
 	return length;
+}
+
+// List destructor 
+void List_Destructor(List *list)
+{
+	List *next;
+	while (!List_IsEmpty(list)) {
+		next = list->next;
+		free(list);
+		list = next;
+	}
+	free(list);
 }
 
 // Debug
