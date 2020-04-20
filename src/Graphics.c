@@ -276,10 +276,10 @@ void _GR_DrawGrid(void)
 	for (int x = 0; x < GR_GetCameraWidth(); x++) {
 		for (int y = 0; y < GR_GetCameraHeight(); y++) {
 			SDL_Rect block = (SDL_Rect) {
-				(int) ceil(x*gXPixelsPerUnit),
-				(int) ceil(y*gYPixelsPerUnit),
-				gXPixelsPerUnit,
-				gYPixelsPerUnit,
+				x*gXPixelsPerUnit,
+				y*gYPixelsPerUnit,
+				(int) ceil(gXPixelsPerUnit),
+				(int) ceil(gYPixelsPerUnit),
 			};
 
 			SDL_SetRenderDrawColor(gRenderer, 0x00, 0x40, 0x50, 0x80);

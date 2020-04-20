@@ -6,7 +6,7 @@ int cameraDependencies[] = { COMP_TRANSFORM };
 // Basic
 Component *CA_Create(double width)
 {
-	int i;
+	unsigned int i;
 	Component *camera;
 	CameraData *cameraData;
 	List *dependenciesList;

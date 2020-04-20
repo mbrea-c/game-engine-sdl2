@@ -7,12 +7,14 @@
 List *PH_forcesLog = NULL;
 int physicsDependencies[] = { COMP_TRANSFORM };
 
+List *gPhysicsList = NULL;
+
 // DECLARATIONS (Local procedures)
 // ODE Solver methods
-int    _PH_GetDim(void *objects);
-void   _PH_SetNextVal(void *objects, int i, double newVal);
-void   _PH_UpdateVals(void *objects);
-double _PH_GetVal(void *objects, int i);
+int    _PH_GetDim();
+void   _PH_SetNextVal(int i, double newVal);
+void   _PH_UpdateVals();
+double _PH_GetVal(int i);
 double _PH_dydt(double t, ODEVector y, int ind);
 Real2 _PH_GetNextPos(Component *physics);
 void _PH_ClearAllForcesRec(Object *root);
@@ -47,7 +49,7 @@ void PH_SetPrevPosComponent(Component *physics, double pos, int axis);
 //TODO: Keep track of existing physics objects
 Component *PH_CreatePhysicsZeroed()
 {
-	int i;	
+	unsigned int i;	
 	List *dependenciesList = List_Nil();
 	for (i = 0; i < sizeof(physicsDependencies)/sizeof(int); i++) {
 		List_Append(dependenciesList, &physicsDependencies[i]);
@@ -73,10 +75,27 @@ Component *PH_CreatePhysicsZeroed()
 	return component;
 }
 
-void PH_Mount(Component *physics) {}
+void PH_Mount(Component *physics) {
+	// Init trail list if not already
+	if (gPhysicsList == NULL) gPhysicsList = List_Nil();
+	List_Append(gPhysicsList, physics);
+}
 
 void PH_Destructor(void *physicsData)
 {
+	int i;
+	List *plist;
+
+	i = 0;
+	plist = gPhysicsList;
+	LOOP_OVER(plist) {
+		if (((Component *)List_Head(plist))->componentData == physicsData) {
+			List_Delete(gPhysicsList, i);
+			break;
+		}
+		i++;
+	}
+
 	free(physicsData);
 }
 
@@ -89,14 +108,7 @@ Real2 PH_GetLinearVelocity(Component *physics)
 
 double PH_GetLinearVelocityComponent(Component *physics, int axis)
 {
-	switch (axis) {
-	case R2_X:
-		return ((PhysicsData *) physics->componentData)->linearVel.x;
-		break;
-	case R2_Y:
-		return ((PhysicsData *) physics->componentData)->linearVel.y;
-		break;
-	}
+	return R2_GetComponent(PH_GetLinearVelocity(physics), axis);
 }
 
 Real2 PH_GetCenterOfMass(Component *physics)
@@ -106,14 +118,7 @@ Real2 PH_GetCenterOfMass(Component *physics)
 
 double PH_GetCenterOfMassComponent(Component *physics, int axis)
 {
-	switch (axis) {
-	case R2_X:
-		return ((PhysicsData *) physics->componentData)->centerOfMass.x;
-		break;
-	case R2_Y:
-		return ((PhysicsData *) physics->componentData)->centerOfMass.y;
-		break;
-	}
+	return R2_GetComponent(PH_GetCenterOfMass(physics), axis);
 }
 
 Real2 PH_GetForceAccum(Component *physics)
@@ -123,14 +128,7 @@ Real2 PH_GetForceAccum(Component *physics)
 
 double PH_GetForceAccumComponent(Component *physics, int axis)
 {
-	switch (axis) {
-	case R2_X:
-		return ((PhysicsData *) physics->componentData)->forceAccum.x;
-		break;
-	case R2_Y:
-		return ((PhysicsData *) physics->componentData)->forceAccum.y;
-		break;
-	}
+	return R2_GetComponent(PH_GetForceAccum(physics), axis);
 }
 
 double PH_GetTorqueAccum(Component *physics)
@@ -226,7 +224,7 @@ void PH_SetMomentOfInertia(Component *physics, double momentOfInertia)
 	((PhysicsData *) physics->componentData)->momentOfInertia = momentOfInertia;
 }
 
-void PH_UpdateObjectTree(Object *root, double deltaT)
+void PH_UpdateAllObjects(double deltaT)
 {
 	ODEVector y;
 	
@@ -235,9 +233,10 @@ void PH_UpdateObjectTree(Object *root, double deltaT)
 		_PH_SetNextVal,
 		_PH_UpdateVals,
 		_PH_GetVal,
-		root,
 	};
 
+	// Initialize physics body list if not yet done
+	if (gPhysicsList == NULL) gPhysicsList = List_Nil();
 	ode(y, 0, deltaT, _PH_dydt);
 }
 
@@ -312,7 +311,7 @@ void PH_LogPhysicsData(Component *physics)
 	printf("forceAccum: (%f,%f)\n", PH_GetForceAccumComponent(physics, R2_X), PH_GetForceAccumComponent(physics, R2_Y));
 	printf("prevRot: %f\n", PH_GetPrevRot(physics));
 	printf("prevPos: (%f,%f)\n", PH_GetPrevPosComponent(physics, R2_X), PH_GetPrevPosComponent(physics, R2_Y));
-	printf("--------------------------\n", GO_GetComponentOwner(physics)->name);
+	printf("--------------------------\n");
 }
 
 // Local procedures
@@ -427,41 +426,19 @@ void _PH_ClearAllForcesRec(Object *root)
 	}
 }
 
-int _PH_GetDim(void *objects)
+int _PH_GetDim()
 {
-	int count;
-	Object *root;
-	List *children;
-
-	count = 0;
-	root = (Object *) objects;
-	children = root->children;
-	while (!List_IsEmpty(children)) {
-		count += FIELD_COUNT;
-		children = List_Tail(children);
-	}
-	return count;
+	return List_GetLength(gPhysicsList)*FIELD_COUNT;
 }
 
-void _PH_SetNextVal(void *objects, int i, double newVal)
+void _PH_SetNextVal(int i, double newVal)
 {
-	Object *root, *child;
 	Component *childPhysics;
-	List *children;
-	int j, objInd;
+	int objInd;
 
-	root = (Object *) objects;
-	children = root->children;
 	objInd = i / FIELD_COUNT;
 
-	for (j = 0; j < objInd; j++) {
-		children = List_Tail(children);
-	}
-	child = List_Head(children);
-	childPhysics = GO_GetComponent(child, COMP_PHYSICS);
-	if (childPhysics == NULL) {
-		return;
-	}
+	childPhysics = List_GetFromIndex(gPhysicsList, objInd);
 	switch (i % FIELD_COUNT) {
 		case 0:
 			PH_SetNextCenterOfMassComponent(childPhysics, newVal, R2_X);
@@ -488,49 +465,32 @@ void _PH_SetNextVal(void *objects, int i, double newVal)
 	}
 }
 
-void _PH_UpdateVals(void *objects)
+void _PH_UpdateVals()
 {
-	Object *root, *child;
-	List *children;
 	Component *childPhysics, *childTransform;
+	List *plist;
 
-	root = (Object *) objects;
-	children = root->children;
-	while (!List_IsEmpty(children)) {
-		child = List_Head(children);
-		childTransform = GO_GetComponent(child, COMP_TRANSFORM);
-		if ((childPhysics = GO_GetComponent(child, COMP_PHYSICS)) != NULL) {
-			PH_SetPrevPos(childPhysics, TR_GetPos(childTransform));
-			TR_SetPos(childTransform, _PH_GetNextPos(childPhysics));
-			TR_SetRot(childTransform, PH_GetNextRot(childPhysics));
-			PH_SetLinearVelocity(childPhysics, PH_GetNextLinearVelocity(childPhysics));
-			PH_SetAngularVelocity(childPhysics, PH_GetNextAngularVelocity(childPhysics));
-		}
-		children = List_Tail(children);
+	plist = gPhysicsList;
+	LOOP_OVER(plist) {
+		childPhysics = List_Head(plist);
+		childTransform = GO_GetComponentFromOwner(childPhysics, COMP_TRANSFORM);
+		PH_SetPrevPos(childPhysics, TR_GetPos(childTransform));
+		TR_SetPos(childTransform, _PH_GetNextPos(childPhysics));
+		TR_SetRot(childTransform, PH_GetNextRot(childPhysics));
+		PH_SetLinearVelocity(childPhysics, PH_GetNextLinearVelocity(childPhysics));
+		PH_SetAngularVelocity(childPhysics, PH_GetNextAngularVelocity(childPhysics));
 	}
 }
 
-double _PH_GetVal(void *objects, int i)
+double _PH_GetVal(int i)
 {
-	Object *root, *child;
 	Component *childPhysics, *childTransform;
-	List *children;
-	int j, objInd;
+	int objInd;
 
-	root = (Object *) objects;
-	children = root->children;
 	objInd = i / FIELD_COUNT;
 
-	for (j = 0; j < objInd; j++) {
-		children = List_Tail(children);
-	}
-	child = List_Head(children);
-	// TODO: I'm assuming that the child has a physics component. Not necessarily true.
-	childPhysics   = GO_GetComponent(child, COMP_PHYSICS);
-	childTransform = GO_GetComponent(child, COMP_TRANSFORM);
-	if (childPhysics == NULL) {
-		return 0;
-	}
+	childPhysics = List_GetFromIndex(gPhysicsList, objInd);
+	childTransform = GO_GetComponentFromOwner(childPhysics, COMP_TRANSFORM);
 
 	switch (i % FIELD_COUNT) {
 		case 0:
@@ -560,25 +520,12 @@ double _PH_GetVal(void *objects, int i)
 
 double _PH_dydt(double t, ODEVector y, int ind)
 {
-	Object *root, *child;
-	Component *childPhysics, *childTransform;
-	List *children;
-	int j, objInd;
+	Component *childPhysics;
+	int objInd;
 
-	root = (Object *) y.objects;
-	children = root->children;
 	objInd = ind / FIELD_COUNT;
 
-	for (j = 0; j < objInd; j++) {
-		children = List_Tail(children);
-	}
-	child = List_Head(children);
-	// TODO: I'm assuming that the child has a physics component. Not necessarily true.
-	childPhysics   = GO_GetComponent(child, COMP_PHYSICS);
-	childTransform = GO_GetComponent(child, COMP_TRANSFORM);
-	if (childPhysics == NULL) {
-		return 0;
-	}
+	childPhysics   = List_GetFromIndex(gPhysicsList, objInd);
 	switch (ind % FIELD_COUNT) {
 		case 0:
 			return PH_GetLinearVelocityComponent(childPhysics, R2_X);

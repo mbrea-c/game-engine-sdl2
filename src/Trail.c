@@ -14,7 +14,7 @@ void TL_IncrementNext(Component *trail);
 // Basic
 Component *TL_Create(int length, RGBA color)
 {
-	int i;
+	unsigned int i;
 	Component *trail;
 	TrailData *trailData;
 	List *dependenciesList;

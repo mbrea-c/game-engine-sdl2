@@ -11,8 +11,6 @@ Component *CD_CreateCollider(int type);
 void CD_Mount(Component *collider);
 void CD_Destructor(void *colliderData);
 
-//TODO: Allowing to freely reassign colliders of arbitrary type will cause leaks
-// Getters
 int CD_GetType(Component *collider);
 void *CD_GetCollider(Component *collider);
 

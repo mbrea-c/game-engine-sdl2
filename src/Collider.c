@@ -18,7 +18,7 @@ Intersection _CD_FindProjectileShipIntersection(Object *ship, Object *bullet);
 // Basic
 Component *CD_CreateCollider(int type)
 {
-	int i;
+	unsigned int i;
 	Component *collider;
 	ColliderData *colliderData;
 	List *dependenciesList;

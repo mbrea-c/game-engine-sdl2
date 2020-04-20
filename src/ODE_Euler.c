@@ -20,14 +20,14 @@ void ode(ODEVector y, double t0, double t1, dydt_funct dydt)
 	if (lastTimestep > 0) {
 		euler_step(y, t0 + step * PHYSICS_TIMESTEP, PHYSICS_TIMESTEP, dydt);
 	}
-	y.updateVals(y.objects);
+	y.updateVals();
 }
 
 void euler_step(ODEVector y, double t, double dt, dydt_funct dydt)
 {
 	int i, dim;
-	dim = y.getDim(y.objects);
+	dim = y.getDim();
 	for (i = 0; i < dim; i++) {
-		y.setNextVal(y.objects, i, y.getVal(y.objects, i) + dt * dydt(t, y, i));
+		y.setNextVal(i, y.getVal(i) + dt * dydt(t, y, i));
 	}
 }

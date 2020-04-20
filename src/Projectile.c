@@ -13,7 +13,7 @@ void PR_UpdateCollider(Component *projectile);
 
 Component *PR_Create(int projectileType, double size)
 {
-	int i;
+	unsigned int i;
 	Component *projectile;
 	ProjectileData *projectileData;
 	List *dependenciesList;

@@ -222,7 +222,7 @@ void List_Print(List *list)
 		if (List_IsEmpty(list)) {
 			printf("Nil");
 		} else {
-			printf("(%p, %p), ", list->element, list->next);
+			printf("(%p, %p), ", (void *)list->element, (void *)list->next);
 		}
 		list = list->next;
 	}

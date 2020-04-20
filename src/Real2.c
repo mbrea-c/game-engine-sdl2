@@ -70,6 +70,10 @@ double R2_GetComponent(Real2 u, int axis)
 		case R2_Y:
 			return u.y;
 			break;
+		default:
+			fprintf(stderr, "Error: %d is not a valid vector component\n", axis);
+			exit(1);
+			break;
 	}
 }
 
@@ -81,6 +85,10 @@ void R2_SetComponent(Real2 *u, double val, int axis)
 			break;
 		case R2_Y:
 			u->y = val;
+			break;
+		default:
+			fprintf(stderr, "Error: %d is not a valid vector component\n", axis);
+			exit(1);
 			break;
 	}
 }

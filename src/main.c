@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 			TL_PushAll();
 			Real2 x = R2_Sub(TR_GetPos(TR_GetFromObj(ship)), TR_PosToRootSpace(TR_GetFromObj(camera), IN_GetMouseCameraPos()));
 			PH_ApplyForce(GO_GetComponent(ship, COMP_PHYSICS),springForce(x,50), R2_ZERO);
-			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
+			PH_UpdateAllObjects((double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
 			GR_Render(root);
 			PH_ClearAllForces(root);
 			willUpdate = 0;

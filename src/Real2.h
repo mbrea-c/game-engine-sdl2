@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* In case M_PI is not defined */
 #ifndef M_PI

@@ -30,6 +30,7 @@ void SH_UpdateXYByDir(int *x, int *y, int dir);
 Component *SH_CreateShipEmpty(int width, int height)
 {
 	int i, j;
+	unsigned int k;
 	ShipData *shipData; 
 	Component *shipComponent;
 	List *dependenciesList;
@@ -37,8 +38,8 @@ Component *SH_CreateShipEmpty(int width, int height)
 	printf("DEBUG: Creating ship size %dx%d\n", width, height);
 	// Create dependencies list
 	dependenciesList = List_Nil();
-	for (i = 0; i < sizeof(shipDependencies)/sizeof(int); i++) {
-		List_Append(dependenciesList, &shipDependencies[i]);
+	for (k = 0; k < sizeof(shipDependencies)/sizeof(int); k++) {
+		List_Append(dependenciesList, &shipDependencies[k]);
 	}
 
 	shipData = malloc(sizeof(ShipData));

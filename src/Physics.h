@@ -46,7 +46,7 @@ void PH_ClearAllForces(Object *root);
 List *PH_GetForcesLog(void);
 
 // Main updater
-void PH_UpdateObjectTree(Object *root, double deltaT);
+void PH_UpdateAllObjects(double deltaT);
 
 // Debug
 void PH_LogPhysicsData(Component *physics);
