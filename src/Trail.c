@@ -5,6 +5,8 @@
 
 int trailDependencies[] = { COMP_TRANSFORM };
 
+List *gTrails = NULL;
+
 // Local declarations
 void TL_SetPoint(Component *trail, int index, Real2 point);
 void TL_IncrementNext(Component *trail);
@@ -31,6 +33,7 @@ Component *TL_Create(int length, RGBA color)
 	trail = CM_CreateComponent(COMP_TRAIL, trailData, &TL_Destructor, &TL_Mount, dependenciesList);
 	return trail;
 }
+
 void TL_Mount(Component *trail)
 {
 	int i;
@@ -40,12 +43,30 @@ void TL_Mount(Component *trail)
 	for (i = 0; i < TL_GetLength(trail); i++) {
 		TL_SetPoint(trail, i, TR_GetPos(transform));
 	}
+
+	// Init trail list if not already
+	if (gTrails == NULL) gTrails = List_Nil();
+	List_Append(gTrails, trail);
 }
 
 void TL_Destructor(void *trailData)
 {
+	int i;
+	List *tlist;
+
+	i = 0;
+	tlist = gTrails;
+	LOOP_OVER(tlist) {
+		if (((Component *)List_Head(tlist))->componentData == trailData) {
+			List_Delete(gTrails, i);
+			break;
+		}
+		i++;
+	}
+
 	free(((TrailData *)trailData)->points);
 	free(trailData);
+
 }
 
 // Getters
@@ -88,8 +109,18 @@ void TL_PushToTrail(Component *trail)
 
 	transform = GO_GetComponentFromOwner(trail, COMP_TRANSFORM);
 	next = TL_GetNext(trail);
-	TL_SetPoint(trail, next, TR_PosToRootSpace(transform, TR_GetPos(transform)));
+	TL_SetPoint(trail, next, TR_PosToRootSpace(transform, R2_ZERO));
 	TL_IncrementNext(trail);
+}
+
+void TL_PushAll(void)
+{
+	List *tlist;
+	
+	tlist = gTrails;
+	LOOP_OVER(tlist) {
+		TL_PushToTrail(List_Head(tlist));
+	}
 }
 
 // Local procedure definitions

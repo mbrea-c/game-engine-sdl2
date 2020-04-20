@@ -109,7 +109,12 @@ Component *GO_GetComponent(Object *obj, int componentType)
 
 Component *GO_GetComponentFromOwner(Component *comp, int componentType)
 {
-	GO_GetComponent(GO_GetComponentOwner(comp), componentType);
+	return GO_GetComponent(GO_GetComponentOwner(comp), componentType);
+}
+
+Component *GO_GetComponentFromParent(Component *comp, int componentType)
+{
+	return GO_GetComponent(GO_GetParent(GO_GetComponentOwner(comp)), componentType);
 }
 
 int GO_HasComponent(Object *obj, int componentType)

@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 	GO_AddComponent(camera, cameraComponent);
 	GR_Init(camera);
 
-	Object *ship = GO_CreateObject("shipi", 7, 7, 0, root); 
+	Object *ship = GO_CreateObject("shipi", 0, 0, 0, root); 
 	GO_AddComponent(ship, PH_CreatePhysicsZeroed());
 	GO_AddComponent(ship, CD_CreateCollider(COLL_POLYGON));
 	GO_AddComponent(ship, SH_CreateShipEmpty(10, 15));
@@ -45,9 +45,14 @@ int main(int argc, char **argv)
 
 	printf("Got to the end of ship creation\n");
 
-	Object *shipTrail = GO_CreateObject("trail0", 0, 0, 0, ship);
-	GO_AddComponent(shipTrail, TL_Create(100, (RGBA) {255, 0, 0, 255}));
-
+	Object *shipTrail0 = GO_CreateObject("trail0", 0, 0, 0, ship);
+	GO_AddComponent(shipTrail0, TL_Create(100, (RGBA) {255, 0, 0, 255}));
+	Object *shipTrail1 = GO_CreateObject("trail1", 5, 0, 0, ship);
+	GO_AddComponent(shipTrail1, TL_Create(100, (RGBA) {255, 0, 0, 255}));
+	Object *shipTrail2 = GO_CreateObject("trail2", 5, 1, 0, ship);
+	GO_AddComponent(shipTrail2, TL_Create(100, (RGBA) {255, 0, 0, 255}));
+	Object *shipTrail3 = GO_CreateObject("trail3", 0, 1, 0, ship);
+	GO_AddComponent(shipTrail3, TL_Create(100, (RGBA) {255, 0, 0, 255}));
 
 	SH_SetBlock(shipComp, 0,0, SH_CreateUnwalledBlock(BLOCK_TEST));
 	printf("Created block\n");
@@ -97,11 +102,9 @@ int main(int argc, char **argv)
 			}
 		}
 		if (willUpdate || !stepByStep) {
-			TL_PushToTrail(GO_GetComponent(shipTrail, COMP_TRAIL));
+			TL_PushAll();
 			Real2 x = R2_Sub(TR_GetPos(TR_GetFromObj(ship)), TR_PosToRootSpace(TR_GetFromObj(camera), IN_GetMouseCameraPos()));
-			PH_ApplyForce(
-					GO_GetComponent(ship, COMP_PHYSICS),
-					springForce(x,50), R2_ZERO);
+			PH_ApplyForce(GO_GetComponent(ship, COMP_PHYSICS),springForce(x,50), R2_ZERO);
 			PH_UpdateObjectTree(root, (double) timeCoefficient * TICKS_PER_FRAME / 1000.0);
 			GR_Render(root);
 			PH_ClearAllForces(root);

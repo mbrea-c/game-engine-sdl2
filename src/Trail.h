@@ -21,5 +21,6 @@ void TL_SetColor(Component *trail, RGBA color);
 
 // Trail specific procedures
 void TL_PushToTrail(Component *trail);
+void TL_PushAll(void);
 
 #endif //TRAIL_H

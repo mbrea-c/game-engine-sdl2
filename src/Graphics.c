@@ -23,6 +23,7 @@ void _GR_RenderRec(Object *root);
 void _GR_DrawLine(Real2 start, Real2 end, int r, int g, int b, int a);
 void _GR_DrawNetForce(Object *obj);
 void _GR_DrawCursor();
+void _GR_DrawGrid(void);
 void _GR_SetUpRenderingGlobals(void);
 
 void _GR_SetUpRenderingGlobals(void)
@@ -79,6 +80,9 @@ void GR_Render(Object *root)
 	SDL_RenderClear(gRenderer);
 	_GR_SetUpRenderingGlobals();
 
+	if (DRAW_GRID) {
+		_GR_DrawGrid();
+	}
 	_GR_RenderRec(root);
 	if (DRAW_FORCES) {
 		List *forcesLog = PH_GetForcesLog();
@@ -265,6 +269,23 @@ void _GR_DrawNetForce(Object *obj)
 
 	objPhysics = GO_GetComponent(obj, COMP_PHYSICS);
 	GR_DrawForce(obj, PH_GetForceAccum(objPhysics), PH_GetCenterOfMass(objPhysics));
+}
+
+void _GR_DrawGrid(void)
+{
+	for (int x = 0; x < GR_GetCameraWidth(); x++) {
+		for (int y = 0; y < GR_GetCameraHeight(); y++) {
+			SDL_Rect block = (SDL_Rect) {
+				(int) ceil(x*gXPixelsPerUnit),
+				(int) ceil(y*gYPixelsPerUnit),
+				gXPixelsPerUnit,
+				gYPixelsPerUnit,
+			};
+
+			SDL_SetRenderDrawColor(gRenderer, 0x00, 0x40, 0x50, 0x80);
+			SDL_RenderDrawRect(gRenderer, &block);
+		}
+	}
 }
 
 void _GR_RenderShip(Object *ship, Real2 relativePos, double relativeRot)

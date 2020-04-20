@@ -21,6 +21,7 @@ void GO_AddChild(Object *parent, Object *child);
 Object *GO_GetComponentOwner(Component *component);
 Component *GO_GetComponent(Object *obj, int componentType);
 Component *GO_GetComponentFromOwner(Component *comp, int componentType);
+Component *GO_GetComponentFromParent(Component *comp, int componentType);
 int GO_HasComponent(Object *obj, int componentType);
 void GO_AddComponent(Object *obj, Component *component);
 

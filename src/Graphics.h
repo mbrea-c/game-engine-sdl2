@@ -19,6 +19,7 @@
 #define DRAW_COLLIDERS 1
 #define DRAW_TORQUES 1
 #define DRAW_FORCES 1
+#define DRAW_GRID 1
 
 
 void GR_Init(Object *camera);
