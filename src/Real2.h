@@ -17,6 +17,8 @@ struct Real2 {
 	double y;
 };
 
+#define R2_ZERO (Real2) {0,0}
+
 Real2 R2_Add(Real2 u, Real2 v);
 Real2 R2_Sub(Real2 u, Real2 v);
 Real2 R2_ScalarMult(Real2 u, double c);

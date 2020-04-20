@@ -3,5 +3,5 @@
 cd src
 cinclude2dot.pl > source.dot
 cd ..
-dot -Teps -Kneato src/source.dot | zathura -
+dot -Teps src/source.dot | zathura -
 rm src/source.dot

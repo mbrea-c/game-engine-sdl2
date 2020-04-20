@@ -3,4 +3,4 @@ bin/*
 testbin
 testbin/*
 shipsdl
-./gmon.out
+gmon.out

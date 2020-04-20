@@ -153,7 +153,6 @@ double PH_GetMomentOfInertia(Component *physics)
 	return ((PhysicsData *) physics->componentData)->momentOfInertia;
 } 
 
-
 // Setters
 
 void PH_SetLinearVelocity(Component *physics, Real2 linearVel)
@@ -533,7 +532,6 @@ double _PH_GetVal(void *objects, int i)
 		return 0;
 	}
 
-	PH_LogPhysicsData(childPhysics);
 	switch (i % FIELD_COUNT) {
 		case 0:
 			return TR_PosToParentSpace(childTransform, PH_GetCenterOfMass(childPhysics)).x;	

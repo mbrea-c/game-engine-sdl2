@@ -5,6 +5,7 @@
 #include "Projectile.h"
 #include "Ship.h"
 #include "Camera.h"
+#include "Input.h"
 
 
 SDL_Window *gWindow = NULL;
@@ -21,6 +22,7 @@ void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot);
 void _GR_RenderRec(Object *root);
 void _GR_DrawLine(Real2 start, Real2 end, int r, int g, int b, int a);
 void _GR_DrawNetForce(Object *obj);
+void _GR_DrawCursor();
 void _GR_SetUpRenderingGlobals(void);
 
 void _GR_SetUpRenderingGlobals(void)
@@ -87,6 +89,7 @@ void GR_Render(Object *root)
 			forcesLog = List_Tail(forcesLog);
 		}
 	}
+	_GR_DrawCursor();
 	SDL_RenderPresent(gRenderer);
 }
 
@@ -112,8 +115,8 @@ void _GR_RenderRec(Object *root)
 	relativePos  = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpaceObj(rootTransform));
 	relativeRot  = TR_RotToLocalSpace(cameraTransform, TR_RotToRootSpaceObj(rootTransform));
 
-	xWithinRange = relativePos.x >= 0 && relativePos.x <= GR_GetCameraWidth();
-	yWithinRange = relativePos.y >= 0 && relativePos.y <= GR_GetCameraHeight();
+	xWithinRange = relativePos.x >= -GR_GetCameraWidth() && relativePos.x <= 2*GR_GetCameraWidth();
+	yWithinRange = relativePos.y >= -GR_GetCameraHeight() && relativePos.y <= 2*GR_GetCameraHeight();
 	
 	// Render if in view
 	if (xWithinRange && yWithinRange) {
@@ -361,6 +364,24 @@ void _GR_RenderShip(Object *ship, Real2 relativePos, double relativeRot)
 		(int) (relativePos.y * gYPixelsPerUnit));
 
 	//END_DEBUG^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+}
+
+void _GR_DrawCursor()
+{
+	int cursorSize = 10;
+	Real2 pos = IN_GetMouseCameraPos();
+	pos.x *= gXPixelsPerUnit;
+	pos.y *= gYPixelsPerUnit;
+
+	SDL_Rect cursorBlock = (SDL_Rect) {
+				(int) pos.x -cursorSize/2,
+				(int) pos.y -cursorSize/2,
+				cursorSize,
+				cursorSize,
+	};
+
+	SDL_RenderFillRect(gRenderer, &cursorBlock);
+
 }
 
 double GR_GetCameraWidth()

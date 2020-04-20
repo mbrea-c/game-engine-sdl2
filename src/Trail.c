@@ -88,7 +88,7 @@ void TL_PushToTrail(Component *trail)
 
 	transform = GO_GetComponentFromOwner(trail, COMP_TRANSFORM);
 	next = TL_GetNext(trail);
-	TL_SetPoint(trail, next, TR_GetPos(transform));
+	TL_SetPoint(trail, next, TR_PosToRootSpace(transform, TR_GetPos(transform)));
 	TL_IncrementNext(trail);
 }
 
