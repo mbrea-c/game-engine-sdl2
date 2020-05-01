@@ -1,5 +1,6 @@
 #include "Debug.h"
 #include "Real2.h"
+#include "Typedefs.h"
 
 void Debug_PrintListIntPtrs(List *list)
 {
@@ -28,4 +29,33 @@ void Debug_PrintPolygon(Polygon *polygon)
 		list = list->next;
 	}
 	printf(" ]\n");
+}
+char *Debug_GetComponentTypeString(int type)
+{
+	switch (type) {
+		case COMP_SHIP:
+			return "COMP_SHIP";
+			break;
+		case COMP_CAMERA:
+			return "COMP_CAMERA";
+			break;
+		case COMP_COLLIDER:
+			return "COMP_COLLIDER";
+			break;
+		case COMP_TRANSFORM:
+			return "COMP_TRANSFORM";
+			break;
+		case COMP_PHYSICS:
+			return "COMP_PHYSICS";
+			break;
+		case COMP_PROJECTILE:
+			return "COMP_PROJECTILE";
+			break;
+		case COMP_TRAIL:
+			return "COMP_TRAIL";
+			break;
+		default:
+			return "UNKNOWN";
+			break;
+	}
 }

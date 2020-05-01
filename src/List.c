@@ -169,6 +169,7 @@ void *List_GetFromIndex(List *list, int index)
 	}
 	while (!List_IsEmpty(list->next) && index > 0) {
 		list = list->next;
+		index--;
 	}
 	if (index > 0) {
 		fprintf(stderr, "List index out of bounds\n");

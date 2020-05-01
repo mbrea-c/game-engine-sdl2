@@ -197,6 +197,7 @@ void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot)
 
 void _GR_RenderPolygonCollider(Object *obj)
 {
+	printf("Printing collider for %s\n", obj->name);
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
 	Component *colliderComponent, *cameraTransform, *objTransform;
@@ -273,11 +274,17 @@ void _GR_DrawNetForce(Object *obj)
 
 void _GR_DrawGrid(void)
 {
-	for (int x = 0; x < GR_GetCameraWidth(); x++) {
-		for (int y = 0; y < GR_GetCameraHeight(); y++) {
+	Real2 pos0, off;
+	off = pos0 = TR_GetPos(TR_GetFromObj(gCamera));
+	pos0.x = (int) pos0.x;
+	pos0.y = (int) pos0.y;
+
+	off = R2_Sub(pos0, off);
+	for (int x = -1; x < GR_GetCameraWidth()+1; x++) {
+		for (int y = -1; y < GR_GetCameraHeight()+1; y++) {
 			SDL_Rect block = (SDL_Rect) {
-				x*gXPixelsPerUnit,
-				y*gYPixelsPerUnit,
+				(x + off.x) * gXPixelsPerUnit,
+				(y + off.y) * gYPixelsPerUnit,
 				(int) ceil(gXPixelsPerUnit),
 				(int) ceil(gYPixelsPerUnit),
 			};

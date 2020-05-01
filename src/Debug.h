@@ -9,5 +9,6 @@
 
 void Debug_PrintListIntPtrs(List *list);
 void Debug_PrintPolygon(Polygon *polygon);
+char *Debug_GetComponentTypeString(int type);
 
 #endif //DEBUG_H

@@ -16,7 +16,7 @@
 #define SCREEN_HEIGHT 720
 
 // Debug drawing
-#define DRAW_COLLIDERS 1
+#define DRAW_COLLIDERS 0
 #define DRAW_TORQUES 1
 #define DRAW_FORCES 1
 #define DRAW_GRID 1

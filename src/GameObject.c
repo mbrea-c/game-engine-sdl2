@@ -147,6 +147,7 @@ void GO_AddComponent(Object *obj, Component *component)
 
 	// Mount component or fail and die
 	if (matchedRequirements) {
+		printf("DEBUG: Mounting component of type %s on %s\n", Debug_GetComponentTypeString(component->type), obj->name);
 		component->owner = obj;
 		List_Append(obj->components, component);
 		(component->mount)(component);

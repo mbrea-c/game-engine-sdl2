@@ -30,9 +30,10 @@ int main(int argc, char **argv)
 	Object *root = GO_CreateObject("top", 0, 0, 0, NULL);
 
 	// TODO: Investigate why camera can't be child of ship (segfault)
-	Object *camera = GO_CreateObject("camerita", 0, 0, 0, root);
+	Object *camera = GO_CreateObject("camerita", -25, -10, 0, root);
 	Component *cameraComponent = CA_Create(50);
-	printf("Adding Camera component\n");
+	Component *cameraTransform = GO_GetComponent(camera, COMP_TRANSFORM);
+	printf("DEBUG: Adding Camera component\n");
 	GO_AddComponent(camera, cameraComponent);
 	GR_Init(camera);
 
@@ -43,7 +44,22 @@ int main(int argc, char **argv)
 	Component *shipComp = GO_GetComponent(ship, COMP_SHIP);
 	Component *shipPhysics = GO_GetComponent(ship, COMP_PHYSICS);
 
-	printf("Got to the end of ship creation\n");
+	Object *ship2 = GO_CreateObject("shipi_drone", 4, 4, 0, ship); 
+	GO_AddComponent(ship2, PH_CreatePhysicsZeroed());
+	GO_AddComponent(ship2, CD_CreateCollider(COLL_POLYGON));
+	GO_AddComponent(ship2, SH_CreateShipEmpty(10, 15));
+	Component *ship2Comp = GO_GetComponent(ship2, COMP_SHIP);
+	SH_SetBlock(ship2Comp, 0,0, SH_CreateUnwalledBlock(BLOCK_TEST));
+	SH_SetBlock(ship2Comp, 1,0, SH_CreateUnwalledBlock(BLOCK_TEST));
+
+	SH_UpdatePhysicsData(ship2Comp);
+	printf("DEBUG: Updated ship physics data\n");
+	SH_CloseWithWalls(ship2Comp, WALL_LIGHT);
+	printf("DEBUG: Closed off ship walls\n");
+	SH_UpdateCollider(ship2Comp);
+	printf("DEBUG: Updated ship collider\n");
+
+	printf("DEBUG: Got to the end of ship creation\n");
 
 	Object *shipTrail0 = GO_CreateObject("trail0", 0, 0, 0, ship);
 	GO_AddComponent(shipTrail0, TL_Create(100, (RGBA) {255, 0, 0, 255}));
@@ -55,22 +71,17 @@ int main(int argc, char **argv)
 	GO_AddComponent(shipTrail3, TL_Create(100, (RGBA) {255, 0, 0, 255}));
 
 	SH_SetBlock(shipComp, 0,0, SH_CreateUnwalledBlock(BLOCK_TEST));
-	printf("Created block\n");
 	SH_SetBlock(shipComp, 1,0, SH_CreateUnwalledBlock(BLOCK_TEST));
-	printf("Created block\n");
 	SH_SetBlock(shipComp, 2,0, SH_CreateUnwalledBlock(BLOCK_TEST));
-	printf("Created block\n");
 	SH_SetBlock(shipComp, 3,0, SH_CreateUnwalledBlock(BLOCK_TEST));
-	printf("Created block\n");
 	SH_SetBlock(shipComp, 4,0, SH_CreateUnwalledBlock(BLOCK_TEST));
-	printf("Created block\n");
 
 	SH_UpdatePhysicsData(shipComp);
-	printf("Updated ship physics data\n");
+	printf("DEBUG: Updated ship physics data\n");
 	SH_CloseWithWalls(shipComp, WALL_LIGHT);
-	printf("Closed off ship walls\n");
+	printf("DEBUG: Closed off ship walls\n");
 	SH_UpdateCollider(shipComp);
-	printf("Updated ship collider\n");
+	printf("DEBUG: Updated ship collider\n");
 	
 	GO_LogObjectTree(root, stderr);
 
@@ -78,7 +89,7 @@ int main(int argc, char **argv)
 	startTime = 0;
 	timeCoefficient = 1;
 	willUpdate = 0;
-	stepByStep = 0;
+	stepByStep = 1;
 	// Main loop
 
 	List_Print(root->children);
@@ -101,6 +112,21 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+		// Move camera
+		const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
+		if (currentKeyStates[SDL_SCANCODE_H]) {
+			TR_SetPos(cameraTransform, R2_Add(TR_GetPos(cameraTransform), (Real2) {-0.1, 0}));
+		}
+		if (currentKeyStates[SDL_SCANCODE_L]) {
+			TR_SetPos(cameraTransform, R2_Add(TR_GetPos(cameraTransform), (Real2) {0.1, 0}));
+		}
+		if (currentKeyStates[SDL_SCANCODE_J]) {
+			TR_SetPos(cameraTransform, R2_Add(TR_GetPos(cameraTransform), (Real2) {0, 0.1}));
+		}
+		if (currentKeyStates[SDL_SCANCODE_K]) {
+			TR_SetPos(cameraTransform, R2_Add(TR_GetPos(cameraTransform), (Real2) {0, -0.1}));
+		}
+			
 		if (willUpdate || !stepByStep) {
 			TL_PushAll();
 			Real2 x = R2_Sub(TR_GetPos(TR_GetFromObj(ship)), TR_PosToRootSpace(TR_GetFromObj(camera), IN_GetMouseCameraPos()));
@@ -110,6 +136,7 @@ int main(int argc, char **argv)
 			PH_ClearAllForces(root);
 			willUpdate = 0;
 		}
+
 		frameTime = SDL_GetTicks() - startTime;
 		if (frameTime < TICKS_PER_FRAME) {
 			SDL_Delay(TICKS_PER_FRAME - frameTime);
