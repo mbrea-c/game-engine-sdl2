@@ -24,6 +24,7 @@ List *List_Append(List *list, void *element);
 List *List_Insert(List *list, void *element, int index);
 List *List_Set(List *list, void *element, int index);
 List *List_Tail(List *list);
+List *List_SliceFrom(List *list, int index);
 List *List_Delete(List *list, int index);
 
 // List accessing

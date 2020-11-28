@@ -3,6 +3,11 @@
 
 int cameraDependencies[] = { COMP_TRANSFORM };
 
+// Local procedure definitions
+void CA_Mount(Component *camera);
+void CA_Update(Component *camera);
+void CA_Destructor(void *cameraData);
+
 // Basic
 Component *CA_Create(double width)
 {
@@ -18,11 +23,12 @@ Component *CA_Create(double width)
 	cameraData = malloc(sizeof(CameraData));
 	cameraData->width = width;
 	
-	camera = CM_CreateComponent(COMP_CAMERA, cameraData, &CA_Destructor, &CA_Mount, dependenciesList);
+	camera = CM_CreateComponent(COMP_CAMERA, cameraData, &CA_Destructor, &CA_Mount, &CA_Update, dependenciesList);
 	return camera;
 }
 
 void CA_Mount(Component *camera) {}
+void CA_Update(Component *camera) {}
 
 void CA_Destructor(void *cameraData)
 {

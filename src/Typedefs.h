@@ -43,10 +43,15 @@ enum ComponentTypes {
 	COMP_TRANSFORM,
 	COMP_PHYSICS,
 	COMP_COLLIDER,
+	COMP_TESTMOVER,
+	COMP_TESTMOUSEFORCE,
 };
 
 enum ColliderTypes {
 	COLL_POLYGON,
+	COLL_CIRCLE,
+	COLL_SEGMENT,
+	COLL_COMPOUND,
 };
 
 // forward declarations 
@@ -60,6 +65,7 @@ typedef struct ColliderData ColliderData;
 typedef struct ProjectileData ProjectileData;
 typedef struct TrailData TrailData;
 typedef struct CameraData CameraData;
+typedef struct TestMouseForceData TestMouseForceData;
 
 typedef struct Object Object;
 typedef struct Block Block;
@@ -117,6 +123,11 @@ struct CameraData {
 	double width;
 };
 
+struct TestMouseForceData {
+	Real2 localDragPoint;
+	double springConstant;
+};
+
 struct Object {
 	char *name;
 	int id;
@@ -131,6 +142,7 @@ struct Component {
 	void *componentData;
 	void (*destructor)(void *);
 	void (*mount)(Component *);
+	void (*update)(Component *);
 	List *dependencies;
 };
 

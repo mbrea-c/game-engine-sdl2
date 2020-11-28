@@ -16,7 +16,7 @@
 #define SCREEN_HEIGHT 720
 
 // Debug drawing
-#define DRAW_COLLIDERS 0
+#define DRAW_COLLIDERS 1
 #define DRAW_TORQUES 1
 #define DRAW_FORCES 1
 #define DRAW_GRID 1
@@ -27,6 +27,7 @@ void GR_Render(Object *root);
 SDL_Renderer *GR_GetMainRenderer(void);
 double GR_GetCameraHeight();
 double GR_GetCameraWidth();
+Object *GR_GetMainCamera();
 void GR_DrawForce(Object *obj, Real2 force, Real2 localPos);
 
 

@@ -5,6 +5,8 @@
 #include "Projectile.h"
 #include "Ship.h"
 #include "Camera.h"
+#include "Segment.h"
+#include "Circle.h"
 #include "Input.h"
 
 
@@ -17,7 +19,10 @@ double gXPixelsPerUnit = 0;
 // Local procedure declarations
 void _GR_RenderShip(Object *ship, Real2 relativePos, double relativeRot);
 void _GR_RenderTrail(Object *trail);
+void GR_RenderCollider(Object *obj);
 void _GR_RenderPolygonCollider(Object *obj);
+void GR_RenderSegmentCollider(Object *obj);
+void GR_RenderCircleCollider(Object *obj);
 void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot);
 void _GR_RenderRec(Object *root);
 void _GR_DrawLine(Real2 start, Real2 end, int r, int g, int b, int a);
@@ -105,7 +110,6 @@ void _GR_RenderRec(Object *root)
 	Real2  relativePos;
 	double relativeRot;
 
-
 	if (root == NULL) {
 		fprintf(stderr, "Cannot render a null root\n");
 		exit(1);
@@ -132,8 +136,8 @@ void _GR_RenderRec(Object *root)
 			_GR_RenderProjectile(root, relativePos, relativeRot);
 		}
 
-		if (rootCollider != NULL && CD_GetType(rootCollider) == COLL_POLYGON && DRAW_COLLIDERS) {
-			_GR_RenderPolygonCollider(root);
+		if (rootCollider != NULL && DRAW_COLLIDERS) {
+			GR_RenderCollider(root);
 		}
 		if (GO_HasComponent(root, COMP_PHYSICS) && DRAW_FORCES) {
 			_GR_DrawNetForce(root);
@@ -195,9 +199,118 @@ void _GR_RenderProjectile(Object *obj, Real2 relativePos, double relativeRot)
 	LT_RenderRect(PR_GetTexture(projectileComponent), &currBlock, NULL, -R2_AngleDeg(PH_GetLinearVelocity(projectilePhysics)), &centerOfRotation, SDL_FLIP_NONE);
 }
 
+void GR_RenderCollider(Object *obj)
+{
+	int type = ((ColliderData *) GO_GetComponent(obj, COMP_COLLIDER)->componentData)->type;
+
+	switch (type) {
+		case COLL_POLYGON:
+			_GR_RenderPolygonCollider(obj);
+			break;
+		case COLL_SEGMENT:
+			GR_RenderSegmentCollider(obj);
+			break;
+		case COLL_CIRCLE:
+			GR_RenderCircleCollider(obj);
+			break;
+		default:
+			fprintf(stderr, "ERROR: Collider type not recognized\n");
+			exit(1);
+			break;
+	}
+}
+
+void GR_RenderSegmentCollider(Object *obj)
+{
+	Real2 startPos, endPos;
+	Component *colliderComponent, *cameraTransform, *objTransform;
+
+	colliderComponent = GO_GetComponent(obj, COMP_COLLIDER);
+	cameraTransform   = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	objTransform      = GO_GetComponent(obj, COMP_TRANSFORM);
+
+	startPos = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpace(objTransform, ((Segment *)CD_GetCollider(colliderComponent))->start));
+	endPos = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpace(objTransform, ((Segment *)CD_GetCollider(colliderComponent))->end));
+	SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+	SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
+			(int) (startPos.x * gXPixelsPerUnit) - 2,
+			(int) (startPos.y * gYPixelsPerUnit) - 2,
+			4,
+			4,
+			});
+	SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
+			(int) (endPos.x * gXPixelsPerUnit) - 2,
+			(int) (endPos.y * gYPixelsPerUnit) - 2,
+			4,
+			4,
+			});
+	SDL_RenderDrawLine(
+			gRenderer, (int) (startPos.x * gXPixelsPerUnit),
+			(int) (startPos.y * gYPixelsPerUnit),
+			(int) (endPos.x * gXPixelsPerUnit),
+			(int) (endPos.y * gYPixelsPerUnit)
+			);
+}
+
+void GR_RenderCircleCollider(Object *obj)
+{
+	Real2 centerPos;
+	Component *colliderComponent, *cameraTransform, *objTransform;
+	int centerPosX, centerPosY, radius;
+
+	colliderComponent = GO_GetComponent(obj, COMP_COLLIDER);
+	cameraTransform   = GO_GetComponent(gCamera, COMP_TRANSFORM);
+	objTransform      = GO_GetComponent(obj, COMP_TRANSFORM);
+
+	centerPos = TR_PosToLocalSpace(cameraTransform, TR_PosToRootSpace(objTransform, ((Circle *)CD_GetCollider(colliderComponent))->center));
+	radius = ((Circle *)CD_GetCollider(colliderComponent))->radius * gXPixelsPerUnit;
+	centerPosX = centerPos.x * gXPixelsPerUnit;
+	centerPosY = centerPos.y * gYPixelsPerUnit;
+	SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+	SDL_RenderDrawRect(gRenderer, &(SDL_Rect) {
+			(int) (centerPos.x * gXPixelsPerUnit) - 2,
+			(int) (centerPos.y * gYPixelsPerUnit) - 2,
+			4,
+			4,
+			});
+	const int32_t diameter = (radius * 2);
+
+	int32_t x = (radius - 1);
+	int32_t y = 0;
+	int32_t tx = 1;
+	int32_t ty = 1;
+	int32_t error = (tx - diameter);
+
+	while (x >= y)
+	{
+		//  Each of the following renders an octant of the circle
+		SDL_RenderDrawPoint(gRenderer, centerPosX + x, centerPosY - y);
+		SDL_RenderDrawPoint(gRenderer, centerPosX + x, centerPosY + y);
+		SDL_RenderDrawPoint(gRenderer, centerPosX - x, centerPosY - y);
+		SDL_RenderDrawPoint(gRenderer, centerPosX - x, centerPosY + y);
+		SDL_RenderDrawPoint(gRenderer, centerPosX + y, centerPosY - x);
+		SDL_RenderDrawPoint(gRenderer, centerPosX + y, centerPosY + x);
+		SDL_RenderDrawPoint(gRenderer, centerPosX - y, centerPosY - x);
+		SDL_RenderDrawPoint(gRenderer, centerPosX - y, centerPosY + x);
+
+		if (error <= 0)
+		{
+			++y;
+			error += ty;
+			ty += 2;
+		}
+
+		if (error > 0)
+		{
+			--x;
+			tx += 2;
+			error += (tx - diameter);
+		}
+	}
+}
+
 void _GR_RenderPolygonCollider(Object *obj)
 {
-	printf("Printing collider for %s\n", obj->name);
 	List *currVertex;
 	Real2 localPointPos, prevPos, firstPos;
 	Component *colliderComponent, *cameraTransform, *objTransform;
@@ -420,6 +533,11 @@ double GR_GetCameraWidth()
 double GR_GetCameraHeight()
 {
 	return GR_GetCameraWidth() * (double) SCREEN_HEIGHT / (double) SCREEN_WIDTH;
+}
+
+Object *GR_GetMainCamera()
+{
+	return gCamera;
 }
 
 SDL_Renderer *GR_GetMainRenderer(void)

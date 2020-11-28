@@ -10,8 +10,6 @@
 
 // Basic component methods
 Component *PH_CreatePhysicsZeroed();
-void PH_Mount(Component *physics);
-void PH_Destructor(void *physicsData);
 
 // Getters
 Real2 PH_GetLinearVelocity(Component *physics);

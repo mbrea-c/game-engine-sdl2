@@ -1,19 +1,27 @@
 #include "Collider.h"
 #include "Component.h"
 #include "Ship.h"
+#include "Circle.h"
+#include "Segment.h"
+#include "Transform.h"
+#include "Debug.h"
 
-
-
-typedef struct Intersection Intersection;
-
-struct Intersection {
-	Real2 pos;
-	Real2 normal;
-};
+List *gColliderList = NULL;
 
 int colliderDependencies[] = { COMP_TRANSFORM };
 
-Intersection _CD_FindProjectileShipIntersection(Object *ship, Object *bullet);
+// Local procedure declarations
+void CD_Mount(Component *collider);
+void CD_Update(Component *collider);
+void CD_DestroyData(void *colliderData);
+void CD_Destructor(void *colliderData);
+void CD_CollidePair(Component *collider1, Component *collider2);
+void CD_CollideCircleCircle(Component *circle1, Component *circle2);
+void CD_CollideCircleSegment(Component *circle, Component *segment);
+void CD_CollideCirclePolygon(Component *circle, Component *polygon);
+void CD_CollideSegmentSegment(Component *segment1, Component *segment2);
+void CD_CollideSegmentPolygon(Component *segment, Component *polygon);
+void CD_CollidePolygonPolygon(Component *polygon1, Component *polygon2);
 
 // Basic
 Component *CD_CreateCollider(int type)
@@ -33,24 +41,44 @@ Component *CD_CreateCollider(int type)
 		case COLL_POLYGON:
 			colliderData->collider = PG_CreateEmpty();
 			break;
+		case COLL_CIRCLE:
+			colliderData->collider = CI_Allocate((Real2){0,0},0);// Allocate zeroed circle
+			break;
+		case COLL_SEGMENT:
+			colliderData->collider = SG_Allocate((Real2){0,0},(Real2){0,0});// Allocate zeroed segment
+			break;
 		default:
 			// Scream and die
 			fprintf(stderr, "Collider type not recognized: %d\n", type);
 			exit(1);
 			break;
 	}
-	collider = CM_CreateComponent(COMP_COLLIDER, colliderData, &CD_Destructor, &CD_Mount, dependenciesList);
+	collider = CM_CreateComponent(COMP_COLLIDER, colliderData, &CD_Destructor, &CD_Mount, &CD_Update, dependenciesList);
 	return collider;
 }
 
-void CD_Mount(Component *collider) {}
-
-void CD_Destructor(void *colliderData)
+void CD_Mount(Component *collider) 
 {
-	int type = ((ColliderData *)colliderData)->type;
+	if (gColliderList == NULL) gColliderList = List_Nil();
+	List_Append(gColliderList, collider);
+}
+
+void CD_Update(Component *collider) {}
+
+void CD_DestroyData(void *colliderData)
+{
+	int type;
+
+	type = ((ColliderData *)colliderData)->type;
 	switch (type) {
 		case COLL_POLYGON:
 			PG_Destructor(((ColliderData *)colliderData)->collider);
+			break;
+		case COLL_CIRCLE:
+			CI_Destroy(((ColliderData *)colliderData)->collider);
+			break;
+		case COLL_SEGMENT:
+			SG_Destroy(((ColliderData *)colliderData)->collider);
 			break;
 		default:
 			// Scream and die
@@ -58,6 +86,25 @@ void CD_Destructor(void *colliderData)
 			exit(1);
 			break;
 
+	}
+}
+
+void CD_Destructor(void *colliderData)
+{
+	int i;
+	List *clist;
+
+	CD_DestroyData(colliderData);
+
+	clist = gColliderList;
+	i = 0;
+	LOOP_OVER(clist) {
+		if (((Component *)List_Head(clist))->componentData == colliderData) {
+			List_Delete(gColliderList, i);
+			break;
+		} 
+		i++;
+		
 	}
 	free(colliderData);
 }
@@ -76,12 +123,18 @@ void *CD_GetCollider(Component *collider)
 void CD_ResetCollider(Component *collider, int type)
 {
 	ColliderData *colliderData;
-	CD_Destructor(collider->componentData);
+	CD_DestroyData(collider->componentData);
 	colliderData = malloc(sizeof(ColliderData));
 	colliderData->type = type;
 	switch (type) {
 		case COLL_POLYGON:
 			colliderData->collider = PG_CreateEmpty();
+			break;
+		case COLL_CIRCLE:
+			colliderData->collider = CI_Allocate((Real2){0,0},0);// Allocate zeroed circle
+			break;
+		case COLL_SEGMENT:
+			colliderData->collider = SG_Allocate((Real2){0,0},(Real2){0,0});// Allocate zeroed segment
 			break;
 		default:
 			// Scream and die
@@ -92,124 +145,151 @@ void CD_ResetCollider(Component *collider, int type)
 	collider->componentData = colliderData;
 }
 
-
-
-/*void CD_ShipHandleCollision(Object *ship, Object *other)*/
-/*{*/
-	/*switch (other->type) {*/
-		/*case OBJ_PROJECTILE:*/
-			/*break;*/
-			
-	/*}*/
-/*}*/
-
-//TODO: This procedure contains a silly amount of placeholder hacks
-/*void CD_CheckCollision(Object *obj0, Object *obj1)*/
-/*{*/
-	/*int type0, type1;*/
-
-	/*type0 = obj0->type;*/
-	/*type1 = obj1->type;*/
+void CD_ComputeCollisions()
+{
+	int i, nColliders;
+	List *clist;
+	Component *currentCollider;
 	
-	/*// No collision in current frame*/
-	/*//TODO: Continuous collision should replace this shitty test*/
-	/*if (!CD_MayCollide(obj0, obj1)) {*/
-		/*return;*/
-	/*}*/
+	nColliders = List_GetLength(gColliderList);
 
-	/*if ( (type0 == OBJ_PROJECTILE && type1 == OBJ_SHIP)*/
-	  /*|| (type0 == OBJ_SHIP && type1 == OBJ_PROJECTILE)) {*/
-		/*//TODO: CCD HERE*/
-	/*}*/
-/*}*/
+	for (i = 0; i < nColliders; i++) {
+		clist = List_SliceFrom(gColliderList, i);
+		currentCollider = List_Head(clist);
+		clist = List_Tail(clist);
+		LOOP_OVER(clist) {
+			CD_CollidePair(currentCollider, List_Head(clist));
+		}
+	}
+}
+
+void CD_CollidePair(Component *collider1, Component *collider2)
+{
+	ColliderData *collider1Data, *collider2Data;
+
+	collider1Data = collider1->componentData;
+	collider2Data = collider2->componentData;
+
+	// I apologize in advance for what I am about to do
+	// Seriously
+	switch (collider1Data->type) {
+		case COLL_CIRCLE:
+			switch (collider2Data->type) {
+				case COLL_CIRCLE:
+					CD_CollideCircleCircle(collider1, collider2);
+					break;
+				case COLL_SEGMENT:
+					CD_CollideCircleSegment(collider1, collider2);
+					break;
+				case COLL_POLYGON:
+					CD_CollideCirclePolygon(collider1, collider2);
+					break;
+			}
+			break;
+		case COLL_SEGMENT:
+			switch (collider2Data->type) {
+				case COLL_CIRCLE:
+					CD_CollideCircleSegment(collider2, collider1);
+					break;
+				case COLL_SEGMENT:
+					CD_CollideSegmentSegment(collider1, collider2);
+					break;
+				case COLL_POLYGON:
+					CD_CollideSegmentPolygon(collider1, collider2);
+					break;
+			}
+			break;
+		case COLL_POLYGON:
+			switch (collider2Data->type) {
+				case COLL_CIRCLE:
+					CD_CollideCirclePolygon(collider2, collider1);
+					break;
+				case COLL_SEGMENT:
+					CD_CollideSegmentPolygon(collider2, collider1);
+					break;
+				case COLL_POLYGON:
+					CD_CollidePolygonPolygon(collider1, collider2);
+					break;
+			}
+			break;
+	}
+}
+
+// Actual collision detection
+// God save us
+void CD_CollideCircleCircle(Component *circle1, Component *circle2)
+{
+	Circle *circle1Data, *circle2Data;
+	double distance;
+
+	circle1Data = CD_GetCollider(circle1);
+	circle2Data = CD_GetCollider(circle2);
+	distance = R2_Dist(
+		TR_PosToRootSpace(GO_GetComponentFromOwner(circle1, COMP_TRANSFORM), circle1Data->center),
+		TR_PosToRootSpace(GO_GetComponentFromOwner(circle2, COMP_TRANSFORM), circle2Data->center));
+
+	if (distance > (circle1Data->radius + circle2Data->radius)) {
+		// COLLISION!!
+		printf("DEBUG: Collision happened circlecircle\n");
+	}
+}
+
+void CD_CollideCircleSegment(Component *circle, Component *segment)
+{
+	Circle circleData;
+	Segment segmentData; 
+	Real2 v, w, lineIntersect;
+	double distance;
+	Component *circleTransform, *segmentTransform;
+
+	circleTransform = GO_GetComponentFromOwner(circle, COMP_TRANSFORM);
+	segmentTransform = GO_GetComponentFromOwner(segment, COMP_TRANSFORM);
+
+	circleData = *(Circle *)CD_GetCollider(circle);
+	segmentData = *(Segment *)CD_GetCollider(segment);
+
+	circleData.center = TR_PosToRootSpace(circleTransform, circleData.center);
+	segmentData.start = TR_PosToRootSpace(segmentTransform, segmentData.start);
+	segmentData.end = TR_PosToRootSpace(segmentTransform, segmentData.end);
+
+	v = R2_Sub(circleData.center, segmentData.start);
+	w = R2_Sub(segmentData.end, segmentData.start);
+
+	// (v ^ w) / |w|
+	distance = fabs(R2_Wedge(v,w)/R2_Mag(w));
+
+	// Rule out obvious non-collision
+	if (distance > circleData.radius) {
+		return;
+	}
+
+	// p0 + w * ( (w . v) / |w|^2)
+	lineIntersect = R2_Add(segmentData.start, R2_ScalarMult(w, R2_Dot(w, v) / R2_MagSq(w)));
+	printf("DEBUG: Potential circle-segment collision\n");
+}
+
+void CD_CollideCirclePolygon(Component *circle, Component *polygon) {}
+void CD_CollideSegmentSegment(Component *segment0, Component *segment1)
+{
+	Component *transform0, *transform1;
+	Segment segmentData0, segmentData1;
+
+	transform0 = GO_GetComponentFromOwner(segment0, COMP_TRANSFORM);
+	transform1 = GO_GetComponentFromOwner(segment1, COMP_TRANSFORM);
+	segmentData0 = *(Segment *)CD_GetCollider(segment0);
+	segmentData1 = *(Segment *)CD_GetCollider(segment1);
+
+	segmentData0.start = TR_PosToRootSpace(transform0, segmentData0.start);
+	segmentData0.end = TR_PosToRootSpace(transform0, segmentData0.end);
+	segmentData1.start = TR_PosToRootSpace(transform1, segmentData1.start);
+	segmentData1.end = TR_PosToRootSpace(transform1, segmentData1.end);
 
 
-/*Interval CD_ProjectOnAxis(Object *obj, Real2 axis)*/
-/*{*/
-	/*Interval interval;*/
-	/*List *vertex; */
-	/*Real2 axisNorm, rootVertex; */
-	/*double projection;*/
+	if (SG_Intersect(segmentData0, segmentData1).didIntersect) {
+		// COLLISION!!
+		printf("DEBUG: Collision happened segmentsegment\n");
+	}
+}
 
-	/*axisNorm = R2_Norm(axis);*/
-	/*vertex = ((Polygon *) obj->collider.collider)->vertices;*/
-	/*if (vertex == NULL) {*/
-		/*interval.start = 0;*/
-		/*interval.end = 0;*/
-	/*} else {*/
-		/*// Initialize interval to first element*/
-		/*rootVertex = GO_PosToRootSpace(obj, *((Real2 *)List_Head(vertex)));*/
-		/*projection = R2_ProjectOnUnit(rootVertex, axisNorm);*/
-		/*interval.start = projection;*/
-		/*interval.end = projection;*/
-		/*vertex = List_Tail(vertex);*/
-		/*// Run through rest of vertices*/
-		/*while (vertex != NULL) {*/
-			/*rootVertex = GO_PosToRootSpace(obj, *((Real2 *)List_Head(vertex)));*/
-			/*projection = R2_ProjectOnUnit(rootVertex, axisNorm);*/
-			/*interval.start = projection < interval.start ? projection : interval.start;*/
-			/*interval.end = projection > interval.end ? projection : interval.end;*/
-			/*vertex = List_Tail(vertex);*/
-		/*}*/
-	/*}*/
-
-	/*return interval;*/
-/*}*/
-
-/*int CD_MayCollide(Object *obj1, Object *obj2)*/
-/*{*/
-	/*int mayCollide;*/
-	/*Interval intervalObj1, intervalObj2;*/
-	/*List *vertexList; */
-	/*Real2 currVertex, nextVertex, axis; */
-
-	/*mayCollide = 1;*/
-	/*vertexList = ((Polygon *) obj1->collider.collider)->vertices;*/
-	/*if (vertexList == NULL) {*/
-		/*fprintf(stderr, "CD_MayCollide: obj1's collider is NULL\n");*/
-		/*exit(1);*/
-	/*}*/
-	/*nextVertex = GO_PosToRootSpace(obj1, *((Real2 *)List_Head(vertexList)));*/
-	/*while (List_HasTail(vertexList)) {*/
-		/*currVertex = nextVertex;*/
-		/*vertexList = List_Tail(vertexList);*/
-		/*nextVertex = GO_PosToRootSpace(obj1, *((Real2 *)List_Head(vertexList)));*/
-		/*axis = R2_Norm(R2_Normal(R2_Sub(nextVertex, currVertex)));*/
-		/*intervalObj1 = CD_ProjectOnAxis(obj1, axis);*/
-		/*intervalObj2 = CD_ProjectOnAxis(obj2, axis);*/
-		/*mayCollide = mayCollide && IN_IsIntersecting(&intervalObj1, &intervalObj2);*/
-	/*}*/
-	/*vertexList = ((Polygon *) obj2->collider.collider)->vertices;*/
-	/*if (vertexList == NULL) {*/
-		/*fprintf(stderr, "CD_MayCollide: obj1's collider is NULL\n");*/
-		/*exit(1);*/
-	/*}*/
-	/*nextVertex = GO_PosToRootSpace(obj2, *((Real2 *)List_Head(vertexList)));*/
-	/*while (List_HasTail(vertexList)) {*/
-		/*currVertex = nextVertex;*/
-		/*vertexList = List_Tail(vertexList);*/
-		/*nextVertex = GO_PosToRootSpace(obj2, *((Real2 *)List_Head(vertexList)));*/
-		/*axis = R2_Norm(R2_Normal(R2_Sub(nextVertex, currVertex)));*/
-		/*intervalObj1 = CD_ProjectOnAxis(obj1, axis);*/
-		/*intervalObj2 = CD_ProjectOnAxis(obj2, axis);*/
-		/*mayCollide = mayCollide && IN_IsIntersecting(&intervalObj1, &intervalObj2);*/
-	/*}*/
-	/*return mayCollide;*/
-/*}*/
-
-/*Real2 CD_PolygonGetFirstVertex(Object *obj)*/
-/*{*/
-	/*if (obj->collider.type != COLL_POLYGON) {*/
-		/*fprintf(stderr, "Error: %s does not have a polygon collider\n", obj->name);*/
-		/*exit(1);*/
-	/*}*/
-	/*return PG_GetFirstVertex(obj->collider.collider);*/
-/*}*/
-
-// ---------------------
-// Local procedures
-
-/*Intersection _CD_FindProjectileShipIntersection(Object *ship, Object *bullet)*/
-/*{*/
-	
-/*}*/
+void CD_CollideSegmentPolygon(Component *segment, Component *polygon) {}
+void CD_CollidePolygonPolygon(Component *polygon1, Component *polygon2) {}

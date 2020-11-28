@@ -8,14 +8,18 @@
 
 // Basic
 Component *CD_CreateCollider(int type);
-void CD_Mount(Component *collider);
-void CD_Destructor(void *colliderData);
 
 int CD_GetType(Component *collider);
 void *CD_GetCollider(Component *collider);
 
 // Setters
 void CD_ResetCollider(Component *collider, int type);
+
+void CD_ComputeCollisions(void);
+
+
+
+
 
 // Real time collision step methods
 //TODO: need to make collision work. Do we need a separate collider type for bullits?

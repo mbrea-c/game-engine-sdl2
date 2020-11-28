@@ -10,6 +10,10 @@ int physicsDependencies[] = { COMP_TRANSFORM };
 List *gPhysicsList = NULL;
 
 // DECLARATIONS (Local procedures)
+void PH_Mount(Component *physics);
+void PH_Update(Component *physics);
+void PH_Destructor(void *physicsData);
+
 // ODE Solver methods
 int    _PH_GetDim();
 void   _PH_SetNextVal(int i, double newVal);
@@ -55,8 +59,8 @@ Component *PH_CreatePhysicsZeroed()
 		List_Append(dependenciesList, &physicsDependencies[i]);
 	}
 	PhysicsData *physicsData = malloc(sizeof(PhysicsData));
-	physicsData->mass = 0;
-	physicsData->momentOfInertia = 0;
+	physicsData->mass = 1;
+	physicsData->momentOfInertia = 1;
 	physicsData->linearVel = (Real2) {0, 0};
 	physicsData->angularVel = 0;
 	physicsData->centerOfMass = (Real2) {0, 0};
@@ -71,7 +75,7 @@ Component *PH_CreatePhysicsZeroed()
 	// Old transform data for collisions
 	physicsData->prevPos = (Real2) {0, 0};
 	physicsData->prevRot = 0;
-	Component *component = CM_CreateComponent(COMP_PHYSICS, physicsData, &PH_Destructor, &PH_Mount, dependenciesList);
+	Component *component = CM_CreateComponent(COMP_PHYSICS, physicsData, &PH_Destructor, &PH_Mount, &PH_Update, dependenciesList);
 	return component;
 }
 
@@ -80,6 +84,7 @@ void PH_Mount(Component *physics) {
 	if (gPhysicsList == NULL) gPhysicsList = List_Nil();
 	List_Append(gPhysicsList, physics);
 }
+void PH_Update(Component *physics) {}
 
 void PH_Destructor(void *physicsData)
 {
@@ -216,6 +221,7 @@ void PH_SetAngularVelocity(Component *physics, double angularVelocity)
 
 void PH_SetMass(Component *physics, double mass)
 {
+	if (mass == 0) mass = 0.00000000001; // Hack to prevent stupid physics bugs
 	((PhysicsData *) physics->componentData)->mass = mass;
 }
 

@@ -20,9 +20,19 @@ double R2_Dot(Real2 u, Real2 v)
 	return u.x * v.x + u.y * v.y;
 }
 
+double R2_Wedge(Real2 u, Real2 v)
+{
+	return u.x * v.y - u.y * v.x;	
+}
+
 double R2_Mag(Real2 u)
 {
 	return sqrt(R2_Dot(u, u));
+}
+
+double R2_MagSq(Real2 u)
+{
+	return R2_Dot(u, u);
 }
 
 double R2_Dist(Real2 u, Real2 v)

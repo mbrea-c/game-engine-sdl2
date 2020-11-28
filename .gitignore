@@ -4,3 +4,4 @@ testbin
 testbin/*
 shipsdl
 gmon.out
+.ccls-cache

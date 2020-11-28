@@ -7,6 +7,9 @@
 int projectileDependencies[] = { COMP_TRANSFORM, COMP_PHYSICS, COMP_COLLIDER };
 
 // Local procedure declarations
+void PR_Mount(Component *projectile);
+void PR_Update(Component *projectile);
+void PR_Destructor(void *projectileData);
 void PR_UpdateCollider(Component *projectile);
 
 // Basic
@@ -27,7 +30,7 @@ Component *PR_Create(int projectileType, double size)
 	for (i = 0; i < sizeof(projectileDependencies)/sizeof(int); i++) {
 		List_Append(dependenciesList, &projectileDependencies[i]);
 	}
-	projectile = CM_CreateComponent(COMP_PROJECTILE, projectileData, &PR_Destructor, &PR_Mount, dependenciesList);
+	projectile = CM_CreateComponent(COMP_PROJECTILE, projectileData, &PR_Destructor, &PR_Mount, &PR_Update, dependenciesList);
 
 	return projectile;
 }
@@ -51,6 +54,8 @@ void PR_Mount(Component *projectile)
 	// Initialize collider
 	PR_UpdateCollider(projectile);
 }
+
+void PR_Update(Component *projectile) {}
 
 void PR_Destructor(void *projectileData)
 {

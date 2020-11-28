@@ -53,9 +53,7 @@ List *List_Append(List *list, void *element)
 		list->_isNil = 0;
 		list->next = List_Nil();
 		List_Set(list, element, 0);
-	}
-
-	else {
+	} else {
 		while (List_HasTail(list)) {
 			list = List_Tail(list);
 		}
@@ -116,6 +114,24 @@ List *List_Tail(List *list)
 	}
 }
 
+List *List_SliceFrom(List *list, int index)
+{
+	List_CheckNotNull(list);
+	if (List_IsEmpty(list)) {
+		fprintf(stderr, "Empty list can't be sliced\n");
+		exit(1);
+	}
+	while (!List_IsEmpty(list->next) && index > 0) {
+		list = list->next;
+		index--;
+	}
+	if (index > 0) {
+		fprintf(stderr, "List index out of bounds\n");
+		exit(1);
+	}
+	return list;
+}
+
 List *List_Delete(List *list, int index)
 {
 	List_CheckNotNull(list);
@@ -123,16 +139,24 @@ List *List_Delete(List *list, int index)
 		fprintf(stderr, "Can't delete element from empty list\n");
 		exit(1);
 	}
-	while (!List_IsEmpty(list->next) && index > 1) {
-		list = list->next;
+	if (index == 0) {
+		list->element = list->next->element;
+		list->_isNil = list->next->_isNil;
+		List *tmpPtr = list->next;
+		list->next = list->next->next;
+		free(tmpPtr);
+	} else {
+		while (!List_IsEmpty(list->next) && index > 1) {
+			list = list->next;
+		}
+		if (index > 1) {
+			fprintf(stderr, "List index out of bounds\n");
+			exit(1);
+		}
+		List *tmpPtr = list->next->next;
+		free(list->next);
+		list->next = tmpPtr;
 	}
-	if (index > 1) {
-		fprintf(stderr, "List index out of bounds\n");
-		exit(1);
-	}
-	List *tmpPtr = list->next->next;
-	free(list->next);
-	list->next = tmpPtr;
 	return list;
 }
 

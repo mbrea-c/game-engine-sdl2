@@ -3,6 +3,11 @@
 #include "Component.h"
 #include "List.h"
 
+// Local procedure declarations
+void TR_Mount(Component *transform);
+void TR_Update(Component *transform);
+void TR_Destructor(void *transformData);
+
 // Basic
 Component *TR_CreateTransform(Real2 pos, double rot)
 {
@@ -10,11 +15,12 @@ Component *TR_CreateTransform(Real2 pos, double rot)
 	TransformData *transformData = malloc(sizeof(TransformData));
 	transformData->pos = pos;
 	transformData->rot = rot;
-	Component *component = CM_CreateComponent(COMP_TRANSFORM, transformData, &TR_Destructor, &TR_Mount, dependencies);
+	Component *component = CM_CreateComponent(COMP_TRANSFORM, transformData, &TR_Destructor, &TR_Mount, &TR_Update, dependencies);
 	return component;
 }
 
 void TR_Mount(Component *transform) {}
+void TR_Update(Component *transform) {}
 
 void TR_Destructor(void *transformData)
 {

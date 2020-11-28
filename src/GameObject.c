@@ -1,6 +1,9 @@
 #include "GameObject.h"
 #include "Transform.h"
+#include "Component.h"
 #include "Debug.h"
+
+List *gUpdateComponents = NULL;
 
 // Declare local procedures
 void _GO_LogObjectTreeRec(Object *root, FILE *outfile, int depth);
@@ -151,9 +154,22 @@ void GO_AddComponent(Object *obj, Component *component)
 		component->owner = obj;
 		List_Append(obj->components, component);
 		(component->mount)(component);
+		// Update list of mounted components
+		if (gUpdateComponents == NULL) {
+			gUpdateComponents = List_Nil();
+		}
+		List_Append(gUpdateComponents, component);
 	} else {
 		fprintf(stderr, "Error when adding component of type %d to %s\n", component->type, obj->name);
 		exit(1);
+	}
+}
+
+void GO_UpdateMountedComponents(void)
+{
+	List *compList = gUpdateComponents;
+	LOOP_OVER(compList) {
+		CM_Update(List_Head(compList));
 	}
 }
 

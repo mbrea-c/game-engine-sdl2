@@ -5,8 +5,6 @@
 
 // Basic
 Component *SH_CreateShipEmpty(int width, int height);
-void SH_Mount(Component *ship);
-void SH_Destructor(void *shipData);
 
 // Getters
 int SH_GetHeight(Component *ship);

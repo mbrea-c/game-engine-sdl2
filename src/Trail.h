@@ -6,8 +6,6 @@
 
 // Basic
 Component *TL_Create(int length, RGBA color);
-void TL_Mount(Component *trail);
-void TL_Destructor(void *trailData);
 
 // Getters
 int TL_GetLength(Component *trail);

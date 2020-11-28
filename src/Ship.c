@@ -20,6 +20,9 @@ enum edgeDir {
 int shipDependencies[] = { COMP_TRANSFORM, COMP_PHYSICS, COMP_COLLIDER };
 
 // DECLARATIONS (Local procedures)
+void SH_Mount(Component *ship);
+void SH_Update(Component *ship);
+void SH_Destructor(void *shipData);
 void SH_InitBlock(Component *ship, int x, int y, Block block);
 // Helpers for collider generation
 int SH_IsVertexOverBlock(Component *ship, int x, int y);
@@ -47,7 +50,7 @@ Component *SH_CreateShipEmpty(int width, int height)
 	shipData->height = height;
 	shipData->blocks = malloc(width * height * sizeof(Block));
 	shipData->holes = List_Nil();
-	shipComponent = CM_CreateComponent(COMP_SHIP, shipData, &SH_Destructor, &SH_Mount, dependenciesList);
+	shipComponent = CM_CreateComponent(COMP_SHIP, shipData, &SH_Destructor, &SH_Mount, &SH_Update, dependenciesList);
 
 	for (j = 0; j < height; j++) {
 		for (i = 0; i < width; i++) {
@@ -67,6 +70,8 @@ void SH_Mount(Component *ship)
 	SH_UpdateCollider(ship);
 
 }
+
+void SH_Update(Component *ship) {}
 
 void SH_Destructor(void *shipData)
 {

@@ -6,8 +6,6 @@
 
 // Basic
 Component *TR_CreateTransform(Real2 pos, double rot);
-void TR_Mount(Component *transform);
-void TR_Destructor(void *transformData);
 Component *TR_GetFromObj(Object *object);
 
 // Getters

@@ -5,8 +5,6 @@
 
 // Basic
 Component *CA_Create(double width);
-void CA_Mount(Component *camera);
-void CA_Destructor(void *cameraData);
 
 // Getters
 double CA_GetWidth(Component *camera);

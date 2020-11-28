@@ -5,8 +5,6 @@
 
 // Basic
 Component *PR_Create(int projectileType, double size);
-void PR_Mount(Component *projectile);
-void PR_Destructor(void *projectileData);
 
 // Getters
 int PR_GetType(Component *projectile);
