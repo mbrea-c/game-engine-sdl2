@@ -29,21 +29,10 @@ bin/%.o: src/%.c $(HEADERS)
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) $(CFLAGS) $(LIBS) $(DEBUG_FLAGS) -o $@
 
+dependency_graph: $(OBJECTS) $(HEADERS)
+	PWD="$PWD/src" util/cinclude2dot.pl | dot -Teps > dep_graph.eps
+
 clean:
-	rm bin/*.o
-	rm $(TARGET)
-
-#debug : $(OBJS)
-	#$(CC) $(OBJ_MAIN) $(OBJS) $(COMPILER_FLAGS) $(DEBUG_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME)
-
-#tests : $(TESTS)
-	#./compile_tests.sh $(OBJS) $(LINKER_FLAGS) $(COMPILER_FLAGS)
-
-#.PHONY : test
-#test :
-	#./run_tests.sh
-
-#.PHONY : clean
-#clean :
-	#rm $(OBJ_NAME)
-
+	rm -f bin/*.o
+	rm -f $(TARGET)
+	rm -f dep_graph.eps
